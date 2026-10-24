@@ -106,7 +106,11 @@ dialog h2{font-size:20px;margin-bottom:14px}
         <button data-status="aktif" aria-pressed="true">Aktif</button>
         <button data-status="arsip" aria-pressed="false">Arsip</button>
       </div>
-      <div class="alat"><input id="cari" type="search" placeholder="Cari nama atau kelas" aria-label="Cari murid"></div>
+      <div class="alat">
+        <input id="cari" type="search" placeholder="Cari nama atau kelas" aria-label="Cari murid">
+        <button class="btn" id="btnImpor" type="button" style="white-space:nowrap">Impor Excel</button>
+        <input id="fileImpor" type="file" accept=".xlsx,.xls,.csv" hidden>
+      </div>
       <div id="daftar"></div>
       <button class="btn utama fab" id="btnTambah">+ Tambah murid</button>
     </section>
@@ -161,11 +165,25 @@ dialog h2{font-size:20px;margin-bottom:14px}
   </form>
 </dialog>
 
+<!-- PRATINJAU IMPOR -->
+<dialog id="dlgImpor">
+  <form method="dialog" onsubmit="return false" style="padding:18px">
+    <h2>Impor dari Excel</h2>
+    <div id="impRingkas" style="margin-bottom:12px"></div>
+    <p class="pesan" id="pesanImpor" role="alert"></p>
+    <div class="aksi">
+      <button class="btn utama" type="button" id="btnImporYa">Impor murid</button>
+      <button class="btn" type="button" id="btnImporBatal">Batal</button>
+    </div>
+  </form>
+</dialog>
+
 <div id="toast" hidden role="status"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ====== GANTI dengan alamat fungsi Anda ======
-const API_URL = "https://mhdswzvwvscsshbqbbzq.supabase.co/functions/v1/jurnal_api";
+const API_URL = "https://PROJECT_REF.supabase.co/functions/v1/jurnal-api";
 // =============================================
 
 const $ = (id) => document.getElementById(id);
@@ -317,6 +335,89 @@ $("formPengaturan").addEventListener("submit", async (e) => {
     $("pesanPengaturan").textContent = "Pengaturan disimpan."; $("pesanPengaturan").className = "pesan";
   } catch (err) { $("pesanPengaturan").textContent = err.message; $("pesanPengaturan").className = "pesan galat"; }
   finally { btn.disabled = false; }
+});
+
+// ---------- impor excel ----------
+const norm = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const ALIAS = {
+  nama: ["nama", "nama murid", "nama siswa", "nama lengkap", "nama peserta didik", "murid", "siswa", "peserta didik"],
+  nis_nisn: ["nis", "nisn", "nis nisn", "no induk", "nomor induk", "nomor induk siswa", "nis nasional"],
+  kelas: ["kelas", "rombel", "rombongan belajar"],
+  jenis_kelamin: ["jenis kelamin", "jk", "l p", "gender", "kelamin"],
+  tanggal_lahir: ["tanggal lahir", "tgl lahir"],
+  nama_ortu: ["nama orang tua", "orang tua", "nama ortu", "ortu", "nama wali", "wali murid", "nama ayah", "nama ibu"],
+  kontak_ortu: ["kontak orang tua", "kontak ortu", "no hp ortu", "hp ortu", "no hp orang tua", "no hp", "telepon", "no telp", "kontak", "no wa", "wa"],
+  wali_kelas: ["wali kelas"],
+};
+const NAMA_KOLOM = { nama: "Nama", nis_nisn: "NIS/NISN", kelas: "Kelas", jenis_kelamin: "Jenis kelamin",
+  tanggal_lahir: "Tanggal lahir", nama_ortu: "Nama orang tua", kontak_ortu: "Kontak orang tua", wali_kelas: "Wali kelas" };
+let hasilImpor = [];
+
+function jk(v) {
+  const n = norm(v);
+  if (["l", "lk", "laki laki", "laki", "pria", "male"].includes(n)) return "L";
+  if (["p", "pr", "perempuan", "wanita", "female"].includes(n)) return "P";
+  return "";
+}
+function tgl(v) {
+  const s = String(v ?? "").trim(); let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  if ((m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/))) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return "";
+}
+
+$("btnImpor").addEventListener("click", () => $("fileImpor").click());
+$("fileImpor").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+    const baris = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],
+      { header: 1, defval: "", raw: false, dateNF: "yyyy-mm-dd" });
+    olahImpor(baris);
+  } catch (err) { toast("File tidak bisa dibaca. Gunakan .xlsx atau .csv."); }
+});
+
+function olahImpor(baris) {
+  const h = baris.findIndex((r, i) => i < 15 && r.some((c) => ALIAS.nama.includes(norm(c))));
+  if (h < 0) { toast("Kolom Nama tidak ditemukan di baris judul."); return; }
+  const kol = {}, asing = [];
+  baris[h].forEach((c, i) => {
+    const n = norm(c); if (!n) return;
+    const k = Object.keys(ALIAS).find((x) => ALIAS[x].includes(n));
+    if (k && !(k in kol)) kol[k] = i; else if (!["no", "nomor", "no urut"].includes(n)) asing.push(String(c).trim());
+  });
+  hasilImpor = []; let kosong = 0;
+  baris.slice(h + 1).forEach((r) => {
+    if (r.every((c) => String(c).trim() === "")) return;
+    const m = {}; for (const k in kol) m[k] = String(r[kol[k]] ?? "").trim();
+    if (!m.nama) { kosong++; return; }
+    m.jenis_kelamin = jk(m.jenis_kelamin); m.tanggal_lahir = tgl(m.tanggal_lahir);
+    hasilImpor.push(m);
+  });
+
+  const box = $("impRingkas"); box.innerHTML = "";
+  const tambah = (t, tebal) => { const p = document.createElement("p"); p.style.margin = "0 0 8px";
+    if (tebal) p.style.fontWeight = "700"; p.textContent = t; box.appendChild(p); };
+  tambah(`${hasilImpor.length} murid siap diimpor.`, true);
+  tambah("Kolom terbaca: " + Object.keys(kol).map((k) => NAMA_KOLOM[k]).join(", ") + ".");
+  if (asing.length) tambah("Kolom tidak dikenali (dilewati): " + asing.join(", ") + ".");
+  if (kosong) tambah(`${kosong} baris tanpa nama dilewati.`);
+  if (hasilImpor.length) tambah("Contoh: " + hasilImpor.slice(0, 3).map((m) => m.nama).join(", ") + (hasilImpor.length > 3 ? ", ..." : ""));
+  if (hasilImpor.length > 300) tambah("Maksimal 300 murid sekali impor, sisanya diabaikan.");
+  $("btnImporYa").disabled = !hasilImpor.length; $("pesanImpor").textContent = "";
+  $("dlgImpor").showModal();
+}
+$("btnImporBatal").addEventListener("click", () => $("dlgImpor").close());
+$("btnImporYa").addEventListener("click", async () => {
+  const btn = $("btnImporYa"); btn.disabled = true; btn.textContent = "Mengimpor...";
+  try {
+    const r = await api("murid.impor", { murid: hasilImpor.slice(0, 300) });
+    $("dlgImpor").close();
+    toast(`${r.ditambah} murid ditambahkan` + (r.dilewati ? `, ${r.dilewati} sudah ada` : ""));
+    await muatMurid();
+  } catch (err) { $("pesanImpor").textContent = err.message; $("pesanImpor").className = "pesan galat"; }
+  finally { btn.disabled = false; btn.textContent = "Impor murid"; }
 });
 
 // ---------- mulai ----------
