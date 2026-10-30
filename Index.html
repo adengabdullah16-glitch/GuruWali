@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MathSNA — Strategi Konten</title>
+<style>
+  :root{
+    --bg:#f6f5f1; --card:#fff; --text:#1f1e1b; --muted:#6b6a64; --border:#e3e1d9;
+    --accent:#534ab7; --topic:#534ab7; --emotion:#d85a30; --ok:#0f6e56; --radius:12px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#161614; --card:#201f1d; --text:#ecebe6; --muted:#a3a19a; --border:#34332f;
+           --accent:#afa9ec; --topic:#afa9ec; --emotion:#f0997b; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card)}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  main{display:grid;gap:12px;padding:12px 16px;grid-template-columns:1fr}
+  @media (min-width:960px){ main{grid-template-columns:1fr 360px} #graphCard{grid-row:span 2} }
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+  .card h2{font-size:15px;margin:0 0 10px;font-weight:600}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,button,select{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)}
+  input{flex:1;min-width:140px}
+  button{cursor:pointer;background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.ghost{background:transparent;color:var(--text);border-color:var(--border)}
+  button:disabled{opacity:.5;cursor:default}
+  #graph{height:60vh;min-height:360px;border-radius:8px;border:1px solid var(--border);margin-top:10px}
+  .legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  ol.trend{margin:0;padding-left:20px} ol.trend li{margin:4px 0}
+  .muted{color:var(--muted);font-size:13px}
+  .chip{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;margin:2px;border:1px solid var(--border)}
+  .chip.topic{color:var(--topic)} .chip.emotion{color:var(--emotion)}
+  pre.script{white-space:pre-wrap;background:var(--bg);padding:10px;border-radius:8px;font-size:13px;max-height:320px;overflow:auto}
+  #status{font-size:13px;color:var(--muted);min-height:18px;margin-top:6px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MathSNA</h1>
+  <button id="btnLogout" class="ghost hidden">Keluar</button>
+</header>
+
+<!-- ============ LOGIN ============ -->
+<section id="loginView" class="card" style="max-width:380px;margin:40px auto">
+  <h2>Masuk</h2>
+  <div class="row" style="flex-direction:column;align-items:stretch">
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button id="btnLogin">Masuk</button>
+  </div>
+  <div id="loginMsg" class="muted" style="margin-top:8px"></div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<main id="appView" class="hidden">
+
+  <section class="card" id="graphCard">
+    <h2>Peta jaringan topik &amp; emosi</h2>
+    <div class="row">
+      <input id="videoId" placeholder="ID / URL video YouTube">
+      <button id="btnIngest">Ambil komentar</button>
+      <button id="btnTag" class="ghost">Analisis (tag)</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label class="muted">Bobot minimum
+        <select id="minWeight"><option>1</option><option selected>2</option><option>3</option><option>5</option></select>
+      </label>
+      <button id="btnRefresh" class="ghost">Muat ulang graf</button>
+    </div>
+    <div id="status"></div>
+    <div id="graph"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--topic)"></span>Topik matematika</span>
+      <span><span class="dot" style="background:var(--emotion)"></span>Emosi / keluhan</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Trending</h2>
+    <p class="muted" style="margin:0 0 6px">Pasangan topik–emosi terkuat</p>
+    <ol class="trend" id="trendList"><li class="muted">Belum ada data</li></ol>
+  </section>
+
+  <section class="card">
+    <h2>Generator ide konten</h2>
+    <p class="muted" id="clusterHint" style="margin:0 0 8px">Ketuk satu node di graf untuk memilih klasternya.</p>
+    <div id="clusterChips"></div>
+    <div class="row" style="margin-top:10px">
+      <select id="format">
+        <option value="short">Short / Reels (≤60 dtk)</option>
+        <option value="long">Video panjang (8–12 mnt)</option>
+        <option value="carousel">Carousel / thread</option>
+      </select>
+      <button id="btnIdea" disabled>Buat ide</button>
+    </div>
+    <div id="ideaOut" style="margin-top:10px"></div>
+  </section>
+
+</main>
+
+<!-- ============ LIBRARIES (CDN) ============ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.25.4/dist/graphology.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology-library@0.8.0/dist/graphology-library.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sigma@2.4.0/build/sigma.min.js"></script>
+
+<script>
+/* =========================================================
+   CONFIG — hanya anon key yang boleh ada di sini
+   ========================================================= */
+const CONFIG = {
+  SUPABASE_URL: 'https://<PROJECT_REF>.supabase.co',
+  SUPABASE_ANON_KEY: '<ANON_KEY>',
+  TREND_LIMIT: 10,
+};
+const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* =========================================================
+   DATA — semua akses Supabase (tabel, view, Edge Function)
+   ========================================================= */
+const Data = {
+  async nodes() {
+    const { data, error } = await sb.from('sna_nodes').select('*');
+    if (error) throw error; return data;
+  },
+  async edges(minWeight) {
+    const { data, error } = await sb.from('sna_edges').select('*')
+      .gte('weight', minWeight).order('weight', { ascending: false });
+    if (error) throw error; return data;
+  },
+  async ingest(videoId) {
+    const { data, error } = await sb.functions.invoke('ingest-youtube', { body: { videoId } });
+    if (error) throw error; return data;
+  },
+  async tag() {
+    const { data, error } = await sb.functions.invoke('tag-comments', { body: { batch: 50 } });
+    if (error) throw error; return data;
+  },
+  async idea(cluster, format) {
+    const { data, error } = await sb.functions.invoke('generate-idea', { body: { cluster, format } });
+    if (error) throw error; return data;
+  },
+};
+
+/* =========================================================
+   GRAPH — bangun graf bipartit, layout, Louvain, render Sigma
+   ========================================================= */
+const Graph = {
+  g: null, renderer: null, selected: null,
+
+  build(nodes, edges) {
+    const g = new graphology.Graph({ type: 'undirected' });
+    const freq = new Map(nodes.map(n => [`${n.kind}:${n.label}`, n.freq]));
+    const maxF = Math.max(1, ...nodes.map(n => n.freq));
+
+    const addNode = (kind, label) => {
+      const key = `${kind}:${label}`;
+      if (g.hasNode(key)) return key;
+      const f = freq.get(key) || 1;
+      g.addNode(key, {
+        label, kind, freq: f,
+        size: 4 + 14 * Math.sqrt(f / maxF),
+        color: css(kind === 'topic' ? '--topic' : '--emotion'),
+        x: Math.random(), y: Math.random(),
+      });
+      return key;
+    };
+
+    for (const e of edges) {
+      const a = addNode('topic', e.topic), b = addNode('emotion', e.emotion);
+      g.addEdge(a, b, { weight: e.weight, pmi: e.pmi, size: Math.min(6, 0.5 + Math.log2(e.weight)), color: css('--border') });
+    }
+    if (g.order === 0) return g;
+
+    // Layout ForceAtlas2 (berbobot) + deteksi komunitas Louvain
+    graphologyLibrary.layoutForceAtlas2.assign(g, {
+      iterations: 300,
+      settings: { ...graphologyLibrary.layoutForceAtlas2.inferSettings(g), edgeWeightInfluence: 1 },
+    });
+    graphologyLibrary.communitiesLouvain.assign(g, { getEdgeWeight: 'weight' });
+    return g;
+  },
+
+  render(g) {
+    if (this.renderer) this.renderer.kill();
+    this.g = g; this.selected = null;
+    if (g.order === 0) { $('graph').innerHTML = '<p class="muted" style="padding:12px">Belum ada edge pada bobot ini.</p>'; return; }
+    $('graph').innerHTML = '';
+    this.renderer = new Sigma(g, $('graph'), {
+      labelColor: { color: css('--text') }, labelRenderedSizeThreshold: 6,
+      nodeReducer: (n, d) => this.selected === null || g.getNodeAttribute(n, 'community') === this.selected
+        ? d : { ...d, color: css('--border'), label: '' },
+      edgeReducer: (e, d) => {
+        if (this.selected === null) return d;
+        const [s, t] = g.extremities(e);
+        return g.getNodeAttribute(s, 'community') === this.selected && g.getNodeAttribute(t, 'community') === this.selected
+          ? d : { ...d, hidden: true };
+      },
+    });
+    this.renderer.on('clickNode', ({ node }) => this.selectCluster(g.getNodeAttribute(node, 'community')));
+    this.renderer.on('clickStage', () => this.selectCluster(null));
+  },
+
+  selectCluster(community) {
+    this.selected = community;
+    this.renderer.refresh();
+    UI.showCluster(community === null ? [] : this.clusterNodes(community));
+  },
+
+  clusterNodes(community) {
+    return this.g.filterNodes((n, a) => a.community === community)
+      .map(n => { const a = this.g.getNodeAttributes(n); return { kind: a.kind, label: a.label, freq: a.freq }; })
+      .sort((a, b) => b.freq - a.freq);
+  },
+};
+
+/* =========================================================
+   UI — event handler & render panel
+   ========================================================= */
+const UI = {
+  cluster: [],
+
+  status(msg) { $('status').textContent = msg || ''; },
+
+  parseVideoId(v) {
+    const m = v.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/);
+    return m ? m[1] : v.trim();
+  },
+
+  async loadGraph() {
+    try {
+      this.status('Memuat graf…');
+      const minW = +$('minWeight').value;
+      const [nodes, edges] = await Promise.all([Data.nodes(), Data.edges(minW)]);
+      Graph.render(Graph.build(nodes, edges));
+      this.renderTrend(edges);
+      this.showCluster([]);
+      this.status(`${nodes.length} node · ${edges.length} edge`);
+    } catch (e) { this.status('Gagal memuat: ' + e.message); }
+  },
+
+  renderTrend(edges) {
+    const top = edges.slice(0, CONFIG.TREND_LIMIT);
+    $('trendList').innerHTML = top.length
+      ? top.map(e => `<li><b>${e.topic}</b> × <span style="color:var(--emotion)">${e.emotion}</span>
+          <span class="muted">· ${e.weight} komentar · PMI ${e.pmi}</span></li>`).join('')
+      : '<li class="muted">Belum ada data</li>';
+  },
+
+  showCluster(nodes) {
+    this.cluster = nodes;
+    $('btnIdea').disabled = nodes.length === 0;
+    $('clusterHint').classList.toggle('hidden', nodes.length > 0);
+    $('clusterChips').innerHTML = nodes.map(n =>
+      `<span class="chip ${n.kind}">${n.label} · ${n.freq}</span>`).join('');
+  },
+
+  renderIdea(idea) {
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+    const outline = (idea.outline ?? []).map(o => `<li>${esc(o)}</li>`).join('');
+    const tags = (idea.hashtag ?? []).join(' ');
+    const fullText = [
+      idea.judul, '', 'HOOK: ' + (idea.hook ?? ''), '',
+      idea.naskah ?? '', '', 'CTA: ' + (idea.cta ?? ''), tags,
+    ].join('\n');
+
+    $('ideaOut').innerHTML = `
+      <h2 style="margin:0 0 4px">${esc(idea.judul ?? 'Ide konten')}</h2>
+      <p style="margin:0 0 6px"><b>Hook:</b> ${esc(idea.hook)}</p>
+      ${idea.alasan ? `<p class="muted" style="margin:0 0 8px">${esc(idea.alasan)}</p>` : ''}
+      ${outline ? `<ol style="margin:0 0 8px;padding-left:20px;font-size:14px">${outline}</ol>` : ''}
+      <pre class="script">${esc(idea.naskah ?? JSON.stringify(idea, null, 2))}</pre>
+      ${idea.cta ? `<p style="margin:6px 0"><b>CTA:</b> ${esc(idea.cta)}</p>` : ''}
+      ${tags ? `<p class="muted" style="margin:0 0 8px">${esc(tags)}</p>` : ''}
+      <button class="ghost" id="btnCopy">Salin naskah lengkap</button>`;
+
+    $('btnCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(fullText); $('btnCopy').textContent = 'Tersalin ✓'; }
+      catch { $('btnCopy').textContent = 'Gagal menyalin'; }
+    };
+  },
+
+  bind() {
+    $('btnLogin').onclick = async () => {
+      const { error } = await sb.auth.signInWithPassword({ email: $('email').value, password: $('password').value });
+      $('loginMsg').textContent = error ? error.message : '';
+    };
+    $('btnLogout').onclick = () => sb.auth.signOut();
+    $('btnRefresh').onclick = () => this.loadGraph();
+    $('minWeight').onchange = () => this.loadGraph();
+
+    $('btnIngest').onclick = async () => {
+      const id = this.parseVideoId($('videoId').value);
+      if (!id) return this.status('Isi ID atau URL video dulu.');
+      try { this.status('Mengambil komentar…'); const r = await Data.ingest(id); this.status(`Tersimpan ${r?.inserted ?? 0} komentar. Lanjut klik "Analisis".`); }
+      catch (e) { this.status('Gagal ambil: ' + e.message); }
+    };
+
+    $('btnTag').onclick = async () => {
+      try { this.status('Menganalisis komentar…'); const r = await Data.tag(); this.status(`Dianalisis ${r?.tagged ?? 0} komentar, sisa ${r?.remaining ?? '?'}.`); await this.loadGraph(); }
+      catch (e) { this.status('Gagal analisis: ' + e.message); }
+    };
+
+    $('btnIdea').onclick = async () => {
+      $('btnIdea').disabled = true; $('ideaOut').innerHTML = '<p class="muted">Menyusun ide…</p>';
+      try { this.renderIdea(await Data.idea(this.cluster, $('format').value)); }
+      catch (e) { $('ideaOut').innerHTML = `<p class="muted">Gagal: ${e.message}</p>`; }
+      finally { $('btnIdea').disabled = false; }
+    };
+  },
+
+  setAuthed(isAuthed) {
+    $('loginView').classList.toggle('hidden', isAuthed);
+    $('appView').classList.toggle('hidden', !isAuthed);
+    $('btnLogout').classList.toggle('hidden', !isAuthed);
+    if (isAuthed) this.loadGraph();
+  },
+};
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+UI.bind();
+sb.auth.getSession().then(({ data }) => UI.setAuthed(!!data.session));
+sb.auth.onAuthStateChange((_e, session) => UI.setAuthed(!!session));
+</script>
+</body>
+</html>
