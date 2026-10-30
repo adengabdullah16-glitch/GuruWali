@@ -115,8 +115,8 @@
    CONFIG — hanya anon key yang boleh ada di sini
    ========================================================= */
 const CONFIG = {
-  SUPABASE_URL: 'https://mhhbsxijgoxojjdzbwyq.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_0Vj4N1e4MFsS1bEQpKTgsw_eQaqUzDV',
+  SUPABASE_URL: 'https://<PROJECT_REF>.supabase.co',
+  SUPABASE_ANON_KEY: '<ANON_KEY>',
   TREND_LIMIT: 10,
 };
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -136,18 +136,30 @@ const Data = {
       .gte('weight', minWeight).order('weight', { ascending: false });
     if (error) throw error; return data;
   },
-  async ingest(videoId) {
-    const { data, error } = await sb.functions.invoke('ingest-youtube', { body: { videoId } });
-    if (error) throw error; return data;
+  // Panggil Edge Function dan tampilkan pesan error ASLI (bukan "non-2xx")
+  async call(name, body) {
+    const { data, error } = await sb.functions.invoke(name, { body });
+    if (!error) return data;
+    let detail = error.message;
+    const res = error.context;                       // Response asli dari function
+    if (res && typeof res.status === 'number') {
+      let text = '';
+      try { text = await res.text(); } catch {}
+      let msg = text;
+      try { msg = JSON.parse(text).error ?? JSON.parse(text).msg ?? text; } catch {}
+      const hint = {
+        401: ' → token tidak valid; coba Keluar lalu Masuk lagi',
+        404: ` → function "${name}" belum di-deploy atau namanya beda`,
+        546: ' → function kehabisan waktu/memori',
+      }[res.status] ?? '';
+      detail = `[${res.status}] ${String(msg).slice(0, 300)}${hint}`;
+    }
+    console.error(name, detail);
+    throw new Error(detail);
   },
-  async tag() {
-    const { data, error } = await sb.functions.invoke('tag-comments', { body: { batch: 50 } });
-    if (error) throw error; return data;
-  },
-  async idea(cluster, format) {
-    const { data, error } = await sb.functions.invoke('generate-idea', { body: { cluster, format } });
-    if (error) throw error; return data;
-  },
+  ingest(videoId)        { return this.call('ingest-youtube', { videoId }); },
+  tag()                  { return this.call('tag-comments', { batch: 50 }); },
+  idea(cluster, format)  { return this.call('generate-idea', { cluster, format }); },
 };
 
 /* =========================================================
