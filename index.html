@@ -37,6 +37,8 @@
   pre.script{white-space:pre-wrap;background:var(--bg);padding:10px;border-radius:8px;font-size:13px;max-height:320px;overflow:auto}
   #status{font-size:13px;color:var(--muted);min-height:18px;margin-top:6px}
   .hidden{display:none!important}
+  .filters select{max-width:100%} #fSource{flex:1;min-width:140px;max-width:280px}
+  .up{color:var(--ok);font-size:12px;font-weight:600} .down{color:var(--muted);font-size:12px}
   textarea{width:100%;font:inherit;font-size:14px;padding:8px 10px;margin-top:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);resize:vertical}
   input[type=file]{flex:1;min-width:0;font-size:13px;padding:6px}
   .imp-list{margin:8px 0 0;padding-left:20px;font-size:13px} .imp-list li{margin:3px 0}
@@ -83,11 +85,26 @@
       <button id="btnIngest">Ambil komentar</button>
       <button id="btnTag" class="ghost">Analisis (tag)</button>
     </div>
-    <div class="row" style="margin-top:8px">
-      <label class="muted">Bobot minimum
+    <div class="row filters" style="margin-top:8px">
+      <select id="fPlatform" aria-label="Platform">
+        <option value="">Semua platform</option>
+        <option value="youtube">YouTube</option>
+        <option value="tiktok">TikTok</option>
+        <option value="instagram">Instagram</option>
+        <option value="x">X</option>
+        <option value="manual">Lainnya</option>
+      </select>
+      <select id="fSource" aria-label="Sumber"><option value="">Semua sumber</option></select>
+      <select id="fPeriod" aria-label="Periode">
+        <option value="0">Semua waktu</option>
+        <option value="7">7 hari terakhir</option>
+        <option value="30">30 hari terakhir</option>
+        <option value="90">90 hari terakhir</option>
+      </select>
+      <label class="muted">Bobot min
         <select id="minWeight"><option>1</option><option selected>2</option><option>3</option><option>5</option></select>
       </label>
-      <button id="btnRefresh" class="ghost">Muat ulang graf</button>
+      <button id="btnRefresh" class="ghost" aria-label="Muat ulang graf">Muat ulang</button>
     </div>
     <div id="status"></div>
     <div id="graph"></div>
@@ -99,7 +116,7 @@
 
   <section class="card">
     <h2>Trending</h2>
-    <p class="muted" style="margin:0 0 6px">Pasangan topik–emosi terkuat</p>
+    <p class="muted" id="trendSub" style="margin:0 0 6px">Pasangan topik–emosi terkuat</p>
     <ol class="trend" id="trendList"><li class="muted">Belum ada data</li></ol>
   </section>
 
@@ -188,6 +205,23 @@ const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v
    DATA — semua akses Supabase (tabel, view, Edge Function)
    ========================================================= */
 const Data = {
+  // Graf berfilter lewat RPC sna_graph (schema-02-filter.sql)
+  async graph({ platform, source, from, to, minWeight = 1 }) {
+    const { data, error } = await sb.rpc('sna_graph', {
+      p_platforms: platform ? [platform] : null,
+      p_videos: source ? [source] : null,
+      p_from: from ? from.toISOString() : null,
+      p_to: to ? to.toISOString() : null,
+      p_min_weight: minWeight,
+    });
+    if (error) throw new Error(error.message.includes('sna_graph')
+      ? 'Fungsi sna_graph belum ada. Jalankan schema-02-filter.sql di SQL Editor.' : error.message);
+    return data;
+  },
+  async sources() {
+    const { data, error } = await sb.rpc('sna_sources');
+    if (error) throw error; return data ?? [];
+  },
   async nodes() {
     const { data, error } = await sb.from('sna_nodes').select('*');
     if (error) throw error; return data;
@@ -269,7 +303,8 @@ const Graph = {
     if (g.order === 0) { $('graph').innerHTML = '<p class="muted" style="padding:12px">Belum ada edge pada bobot ini.</p>'; return; }
     $('graph').innerHTML = '';
     this.renderer = new Sigma(g, $('graph'), {
-      labelColor: { color: css('--text') }, labelRenderedSizeThreshold: 6,
+      labelColor: { color: css('--text') }, labelRenderedSizeThreshold: 4,
+      labelDensity: 1, labelGridCellSize: 60,
       nodeReducer: (n, d) => this.selected === null || g.getNodeAttribute(n, 'community') === this.selected
         ? d : { ...d, color: css('--border'), label: '' },
       edgeReducer: (e, d) => {
@@ -423,7 +458,7 @@ const Importer = {
       try {
         const r = await Data.importComments($('impPlatform').value, source, list);
         status(`Tersimpan ${r.inserted} komentar baru${r.duplicates ? `, ${r.duplicates} sudah ada` : ''}. Lanjut klik "Analisis (tag)".`);
-        $('impText').value = ''; $('impFile').value = ''; this.fileRows = null; this.preview([]);
+        UI.loadSources(); $('impText').value = ''; $('impFile').value = ''; this.fileRows = null; this.preview([]);
       } catch (err) { status('Gagal impor: ' + err.message); }
       finally { $('btnImport').disabled = false; }
     };
@@ -443,24 +478,77 @@ const UI = {
     return m ? m[1] : v.trim();
   },
 
+  sourcesCache: [],
+
+  // Isi dropdown sumber sesuai platform terpilih
+  async loadSources() {
+    try { this.sourcesCache = await Data.sources(); } catch { this.sourcesCache = []; }
+    this.fillSources();
+  },
+  fillSources() {
+    const plat = $('fPlatform').value, keep = $('fSource').value;
+    const list = this.sourcesCache.filter(s => !plat || s.platform === plat);
+    const esc = Importer.esc;
+    $('fSource').innerHTML = '<option value="">Semua sumber</option>' + list.map(s =>
+      `<option value="${esc(s.id)}">${esc(s.title.slice(0, 50))} (${s.tagged}/${s.comments})</option>`).join('');
+    if (list.some(s => s.id === keep)) $('fSource').value = keep;
+  },
+
+  filters() {
+    const days = +$('fPeriod').value;
+    const now = new Date();
+    const from = days ? new Date(now - days * 864e5) : null;
+    return {
+      platform: $('fPlatform').value || null,
+      source: $('fSource').value || null,
+      days, from, to: null,
+      minWeight: +$('minWeight').value,
+    };
+  },
+
   async loadGraph() {
     try {
       this.status('Memuat graf…');
-      const minW = +$('minWeight').value;
-      const [nodes, edges] = await Promise.all([Data.nodes(), Data.edges(minW)]);
-      Graph.render(Graph.build(nodes, edges));
-      this.renderTrend(edges);
+      const f = this.filters();
+      const jobs = [Data.graph(f)];
+      // Periode sebelumnya (panjang sama) untuk mendeteksi tren naik
+      if (f.days) jobs.push(Data.graph({ ...f, from: new Date(f.from - f.days * 864e5), to: f.from, minWeight: 1 }));
+      const [cur, prev] = await Promise.all(jobs);
+
+      Graph.render(Graph.build(cur.nodes, cur.edges));
+      this.renderTrend(cur.edges, prev, f.days);
       this.showCluster([]);
-      this.status(`${nodes.length} node · ${edges.length} edge`);
+      this.status(`${cur.comments} komentar · ${cur.tagged} teranalisis · ${cur.nodes.length} node · ${cur.edges.length} edge`
+        + (cur.comments > cur.tagged ? ' · klik "Analisis" untuk sisanya' : ''));
     } catch (e) { this.status('Gagal memuat: ' + e.message); }
   },
 
-  renderTrend(edges) {
-    const top = edges.slice(0, CONFIG.TREND_LIMIT);
+  renderTrend(edges, prev, days) {
+    const esc = Importer.esc;
+    let list = edges.map(e => ({ ...e, delta: null, isNew: false }));
+
+    if (prev) {
+      const before = new Map(prev.edges.map(e => [`${e.topic}|${e.emotion}`, e.weight]));
+      const hasPrev = prev.tagged > 0;
+      list = list.map(e => {
+        const b = before.get(`${e.topic}|${e.emotion}`) ?? 0;
+        return { ...e, delta: e.weight - b, isNew: hasPrev && b === 0 };
+      }).sort((a, b) => (b.delta - a.delta) || (b.weight - a.weight));
+      $('trendSub').textContent = `Paling naik dibanding ${days} hari sebelumnya`;
+    } else {
+      $('trendSub').textContent = 'Pasangan topik–emosi terkuat';
+    }
+
+    const badge = (e) => e.delta === null ? ''
+      : e.isNew ? ' <span class="up">baru</span>'
+      : e.delta > 0 ? ` <span class="up">▲ +${e.delta}</span>`
+      : e.delta < 0 ? ` <span class="down">▼ ${e.delta}</span>` : '';
+
+    const top = list.slice(0, CONFIG.TREND_LIMIT);
     $('trendList').innerHTML = top.length
-      ? top.map(e => `<li><b>${e.topic}</b> × <span style="color:var(--emotion)">${e.emotion}</span>
+      ? top.map(e => `<li><b>${esc(e.topic)}</b> × <span style="color:var(--emotion)">${esc(e.emotion)}</span>${badge(e)}
           <span class="muted">· ${e.weight} komentar · PMI ${e.pmi}</span></li>`).join('')
-      : '<li class="muted">Belum ada data</li>';
+      : '<li class="muted">Belum ada data untuk filter ini</li>';
   },
 
   showCluster(nodes) {
@@ -502,18 +590,21 @@ const UI = {
       $('loginMsg').textContent = error ? error.message : '';
     };
     $('btnLogout').onclick = () => sb.auth.signOut();
-    $('btnRefresh').onclick = () => this.loadGraph();
+    $('btnRefresh').onclick = async () => { await this.loadSources(); this.loadGraph(); };
     $('minWeight').onchange = () => this.loadGraph();
+    $('fPeriod').onchange   = () => this.loadGraph();
+    $('fSource').onchange   = () => this.loadGraph();
+    $('fPlatform').onchange = () => { this.fillSources(); this.loadGraph(); };
 
     $('btnIngest').onclick = async () => {
       const id = this.parseVideoId($('videoId').value);
       if (!id) return this.status('Isi ID atau URL video dulu.');
-      try { this.status('Mengambil komentar…'); const r = await Data.ingest(id); this.status(`Tersimpan ${r?.inserted ?? 0} komentar. Lanjut klik "Analisis".`); }
+      try { this.status('Mengambil komentar…'); const r = await Data.ingest(id); this.status(`Tersimpan ${r?.inserted ?? 0} komentar. Lanjut klik "Analisis".`); this.loadSources(); }
       catch (e) { this.status('Gagal ambil: ' + e.message); }
     };
 
     $('btnTag').onclick = async () => {
-      try { this.status('Menganalisis komentar…'); const r = await Data.tag(); this.status(`Dianalisis ${r?.tagged ?? 0} komentar, sisa ${r?.remaining ?? '?'}.`); await this.loadGraph(); }
+      try { this.status('Menganalisis komentar…'); const r = await Data.tag(); await this.loadSources(); await this.loadGraph(); this.status(`Dianalisis ${r?.tagged ?? 0} komentar, sisa ${r?.remaining ?? '?'}.`); }
       catch (e) { this.status('Gagal analisis: ' + e.message); }
     };
 
@@ -529,7 +620,8 @@ const UI = {
     $('loginView').classList.toggle('hidden', isAuthed);
     $('appView').classList.toggle('hidden', !isAuthed);
     $('btnLogout').classList.toggle('hidden', !isAuthed);
-    if (isAuthed) this.loadGraph();
+    if (isAuthed && !this.loaded) { this.loaded = true; this.loadSources().then(() => this.loadGraph()); }
+    if (!isAuthed) this.loaded = false;
   },
 };
 
