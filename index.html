@@ -37,6 +37,10 @@
   pre.script{white-space:pre-wrap;background:var(--bg);padding:10px;border-radius:8px;font-size:13px;max-height:320px;overflow:auto}
   #status{font-size:13px;color:var(--muted);min-height:18px;margin-top:6px}
   .hidden{display:none!important}
+  textarea{width:100%;font:inherit;font-size:14px;padding:8px 10px;margin-top:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);resize:vertical}
+  input[type=file]{flex:1;min-width:0;font-size:13px;padding:6px}
+  .imp-list{margin:8px 0 0;padding-left:20px;font-size:13px} .imp-list li{margin:3px 0}
+
 </style>
 </head>
 <body>
@@ -101,6 +105,32 @@
     </div>
     <div id="ideaOut" style="margin-top:10px"></div>
   </section>
+  <!-- ===== PATCH IMPOR: kartu impor komentar manual ===== -->
+  <section class="card" id="importCard">
+    <h2>Impor komentar (TikTok / IG / X)</h2>
+    <div class="row">
+      <select id="impPlatform">
+        <option value="tiktok">TikTok</option>
+        <option value="instagram">Instagram</option>
+        <option value="x">X</option>
+        <option value="youtube">YouTube</option>
+        <option value="manual">Lainnya</option>
+      </select>
+      <input id="impSource" placeholder="Nama / URL konten sumber">
+    </div>
+    <textarea id="impText" rows="6" placeholder="Tempel komentar di sini, satu komentar per baris…"></textarea>
+    <div class="row" style="margin-top:8px">
+      <span class="muted">atau file CSV/TXT:</span>
+      <input id="impFile" type="file" accept=".csv,.txt,text/csv,text/plain">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnImpPreview" class="ghost">Pratinjau</button>
+      <button id="btnImport">Impor</button>
+    </div>
+    <div id="impStatus" class="muted" style="margin-top:6px"></div>
+    <div id="impPreview"></div>
+  </section>
+  <!-- ===== /PATCH IMPOR ===== -->
 
 </main>
 
