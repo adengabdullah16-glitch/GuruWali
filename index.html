@@ -17,8 +17,28 @@
   body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:15px}
   header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card)}
   header h1{font-size:18px;margin:0;font-weight:600}
-  main{display:grid;gap:12px;padding:12px 16px;grid-template-columns:1fr}
-  @media (min-width:960px){ main{grid-template-columns:1fr 360px} #graphCard{grid-row:span 2} }
+  #appView{max-width:1280px;margin:0 auto;padding:12px 16px}
+  .split{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
+  @media (min-width:960px){ .split{grid-template-columns:1fr 360px} }
+  .stack{display:grid;gap:12px;max-width:760px}
+  .tab:not(.active){display:none}
+  #filterCard{margin-bottom:12px}
+  nav#tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:12px}
+  nav#tabs button{background:transparent;color:var(--muted);border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px}
+  nav#tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+  @media (max-width:720px){
+    #appView{padding-bottom:84px}
+    nav#tabs{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:10;background:var(--card);border-top:1px solid var(--border);border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
+    nav#tabs button{flex:1;padding:12px 4px;font-size:14px;border-bottom:0;border-top:2px solid transparent}
+    nav#tabs button[aria-selected=true]{border-top-color:var(--accent)}
+  }
+  .hist{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--border)}
+  .hist:first-child{border-top:0}
+  .hist button{background:transparent;color:var(--text);border:0;padding:2px 4px;text-align:left}
+  .hist .pick{flex:1;min-width:0} .hist .pick b{display:block;font-weight:600}
+  .hist .star{color:var(--accent);font-size:18px;line-height:1}
+  .src-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:14px}
+  .src-row:first-child{border-top:0}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
   .card h2{font-size:15px;margin:0 0 10px;font-weight:600}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -76,16 +96,18 @@
 </section>
 
 <!-- ============ DASHBOARD ============ -->
-<main id="appView" class="hidden">
+<div id="appView" class="hidden">
 
-  <section class="card" id="graphCard">
-    <h2>Peta jaringan topik &amp; emosi</h2>
-    <div class="row">
-      <input id="videoId" placeholder="ID / URL video YouTube">
-      <button id="btnIngest">Ambil komentar</button>
-      <button id="btnTag" class="ghost">Analisis (tag)</button>
-    </div>
-    <div class="row filters" style="margin-top:8px">
+  <nav id="tabs" role="tablist" aria-label="Bagian dashboard">
+    <button role="tab" data-tab="peta" aria-selected="true">Peta</button>
+    <button role="tab" data-tab="tren" aria-selected="false">Tren</button>
+    <button role="tab" data-tab="ide"  aria-selected="false">Ide</button>
+    <button role="tab" data-tab="data" aria-selected="false">Data</button>
+  </nav>
+
+  <!-- Filter bersama untuk tab Peta & Tren -->
+  <section class="card" id="filterCard">
+    <div class="row filters">
       <select id="fPlatform" aria-label="Platform">
         <option value="">Semua platform</option>
         <option value="youtube">YouTube</option>
@@ -104,36 +126,77 @@
       <label class="muted">Bobot min
         <select id="minWeight"><option>1</option><option selected>2</option><option>3</option><option>5</option></select>
       </label>
-      <button id="btnRefresh" class="ghost" aria-label="Muat ulang graf">Muat ulang</button>
+      <button id="btnRefresh" class="ghost" aria-label="Muat ulang">Muat ulang</button>
     </div>
     <div id="status"></div>
-    <div id="graph"></div>
-    <div class="legend">
-      <span><span class="dot" style="background:var(--topic)"></span>Topik matematika</span>
-      <span><span class="dot" style="background:var(--emotion)"></span>Emosi / keluhan</span>
-    </div>
   </section>
 
-  <section class="card">
-    <h2>Trending</h2>
-    <p class="muted" id="trendSub" style="margin:0 0 6px">Pasangan topik–emosi terkuat</p>
-    <ol class="trend" id="trendList"><li class="muted">Belum ada data</li></ol>
-  </section>
+  <!-- ===== TAB PETA ===== -->
+  <div class="tab split active" id="tab-peta" role="tabpanel">
+    <section class="card">
+      <h2>Peta jaringan topik &amp; emosi</h2>
+      <div id="graph"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--topic)"></span>Topik matematika</span>
+        <span><span class="dot" style="background:var(--emotion)"></span>Emosi / keluhan</span>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Klaster terpilih</h2>
+      <p class="muted" id="clusterHint" style="margin:0 0 8px">Ketuk satu node di graf untuk memilih klasternya.</p>
+      <div id="clusterChips"></div>
+      <div class="row" style="margin-top:10px">
+        <select id="format">
+          <option value="short">Short / Reels (≤60 dtk)</option>
+          <option value="long">Video panjang (8–12 mnt)</option>
+          <option value="carousel">Carousel / thread</option>
+        </select>
+        <button id="btnIdea" disabled>Buat ide</button>
+      </div>
+      <div id="genMsg" class="muted" style="margin-top:8px"></div>
+    </section>
+  </div>
 
-  <section class="card">
-    <h2>Generator ide konten</h2>
-    <p class="muted" id="clusterHint" style="margin:0 0 8px">Ketuk satu node di graf untuk memilih klasternya.</p>
-    <div id="clusterChips"></div>
-    <div class="row" style="margin-top:10px">
-      <select id="format">
-        <option value="short">Short / Reels (≤60 dtk)</option>
-        <option value="long">Video panjang (8–12 mnt)</option>
-        <option value="carousel">Carousel / thread</option>
-      </select>
-      <button id="btnIdea" disabled>Buat ide</button>
-    </div>
-    <div id="ideaOut" style="margin-top:10px"></div>
-  </section>
+  <!-- ===== TAB TREN ===== -->
+  <div class="tab" id="tab-tren" role="tabpanel">
+    <section class="card">
+      <h2>Tren topik &amp; emosi</h2>
+      <div class="row" style="margin-bottom:6px">
+        <select id="trendSort" aria-label="Urutkan">
+          <option value="naik">Paling naik</option>
+          <option value="kuat">Paling banyak</option>
+          <option value="pmi">Paling khas (PMI)</option>
+        </select>
+        <span class="muted" id="trendSub">Pasangan topik–emosi terkuat</span>
+      </div>
+      <ol class="trend" id="trendList"><li class="muted">Belum ada data</li></ol>
+    </section>
+  </div>
+
+  <!-- ===== TAB IDE ===== -->
+  <div class="tab split" id="tab-ide" role="tabpanel">
+    <section class="card">
+      <h2>Ide konten</h2>
+      <div id="ideaOut"><p class="muted">Pilih klaster di tab Peta lalu klik "Buat ide", atau buka salah satu ide dari riwayat.</p></div>
+    </section>
+    <section class="card">
+      <h2>Riwayat ide</h2>
+      <label class="muted"><input type="checkbox" id="favOnly" style="min-width:0;flex:none"> Favorit saja</label>
+      <div id="ideaHist" style="margin-top:6px"><p class="muted">Memuat…</p></div>
+    </section>
+  </div>
+
+  <!-- ===== TAB DATA ===== -->
+  <div class="tab stack" id="tab-data" role="tabpanel">
+    <section class="card">
+      <h2>Ambil &amp; analisis komentar</h2>
+      <div class="row">
+        <input id="videoId" placeholder="ID / URL video YouTube">
+        <button id="btnIngest">Ambil komentar</button>
+        <button id="btnTag" class="ghost">Analisis (tag)</button>
+      </div>
+      <div id="dataStatus" class="muted" style="margin-top:6px;min-height:18px"></div>
+    </section>
 
   <!-- ===== Impor komentar manual ===== -->
   <section class="card" id="importCard">
@@ -161,7 +224,14 @@
     <div id="impPreview"></div>
   </section>
 
-</main>
+    <section class="card">
+      <h2>Sumber komentar</h2>
+      <p class="muted" style="margin:0 0 6px">Teranalisis / total komentar</p>
+      <div id="srcList"><p class="muted">Belum ada sumber.</p></div>
+    </section>
+  </div>
+
+</div>
 
 <!-- ============ LIBRARIES (CDN) ============ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -178,7 +248,7 @@
 const CONFIG = {
   SUPABASE_URL: 'https://<PROJECT_REF>.supabase.co',
   SUPABASE_ANON_KEY: '<ANON_KEY>',
-  TREND_LIMIT: 10,
+  TREND_LIMIT: 50,
 };
 const CFG_KEY = 'mathsna_supabase_cfg';
 const $ = (id) => document.getElementById(id);
@@ -217,6 +287,16 @@ const Data = {
     if (error) throw new Error(error.message.includes('sna_graph')
       ? 'Fungsi sna_graph belum ada. Jalankan schema-02-filter.sql di SQL Editor.' : error.message);
     return data;
+  },
+  async ideas() {
+    const { data, error } = await sb.from('ideas').select('id,cluster_key,idea,saved,created_at')
+      .order('created_at', { ascending: false }).limit(50);
+    if (error) throw error; return data ?? [];
+  },
+  async setSaved(id, saved) {
+    const { data, error } = await sb.from('ideas').update({ saved }).eq('id', id).select('id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('Tidak ada baris yang berubah (cek policy RLS "update ideas")');
   },
   async sources() {
     const { data, error } = await sb.rpc('sna_sources');
@@ -297,10 +377,25 @@ const Graph = {
     return g;
   },
 
+  pending: false,
+
   render(g) {
-    if (this.renderer) this.renderer.kill();
-    this.g = g; this.selected = null;
-    if (g.order === 0) { $('graph').innerHTML = '<p class="muted" style="padding:12px">Belum ada edge pada bobot ini.</p>'; return; }
+    if (this.renderer) { this.renderer.kill(); this.renderer = null; }
+    this.g = g; this.selected = null; this.pending = false;
+    if (g.order === 0) { $('graph').innerHTML = '<p class="muted" style="padding:12px">Belum ada edge pada filter ini.</p>'; return; }
+    // Sigma error bila wadah berukuran nol (tab Peta sedang tidak aktif) → tunda
+    if (!$('graph').offsetWidth) { this.pending = true; return; }
+    this.draw();
+  },
+
+  // Dipanggil saat tab Peta dibuka
+  show() {
+    if (this.pending) { this.pending = false; this.draw(); }
+    else if (this.renderer) { this.renderer.resize(); this.renderer.refresh(); }
+  },
+
+  draw() {
+    const g = this.g;
     $('graph').innerHTML = '';
     this.renderer = new Sigma(g, $('graph'), {
       labelColor: { color: css('--text') }, labelRenderedSizeThreshold: 4,
@@ -472,6 +567,22 @@ const UI = {
   cluster: [],
 
   status(msg) { $('status').textContent = msg || ''; },
+  dstatus(msg) { $('dataStatus').textContent = msg || ''; },
+
+  /* ---------- Tab ---------- */
+  TABS: ['peta', 'tren', 'ide', 'data'],
+  tab: 'peta',
+  setTab(name, push = true) {
+    if (!this.TABS.includes(name)) name = 'peta';
+    this.tab = name;
+    document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
+    $('filterCard').classList.toggle('hidden', name !== 'peta' && name !== 'tren');
+    if (name === 'peta') requestAnimationFrame(() => Graph.show());
+    if (name === 'ide' && !this.ideasLoaded) this.loadIdeas();
+    if (push && location.hash !== '#' + name) location.hash = name;
+    window.scrollTo(0, 0);
+  },
 
   parseVideoId(v) {
     const m = v.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/);
@@ -484,6 +595,14 @@ const UI = {
   async loadSources() {
     try { this.sourcesCache = await Data.sources(); } catch { this.sourcesCache = []; }
     this.fillSources();
+    this.renderSources();
+  },
+  renderSources() {
+    const esc = Importer.esc, L = this.sourcesCache;
+    $('srcList').innerHTML = L.length ? L.map(s =>
+      `<div class="src-row"><span>${esc(s.title.slice(0, 60))} <span class="muted">· ${esc(s.platform)}</span></span>
+       <span class="${s.tagged < s.comments ? '' : 'muted'}">${s.tagged}/${s.comments}</span></div>`).join('')
+      : '<p class="muted">Belum ada sumber.</p>';
   },
   fillSources() {
     const plat = $('fPlatform').value, keep = $('fSource').value;
@@ -523,28 +642,47 @@ const UI = {
     } catch (e) { this.status('Gagal memuat: ' + e.message); }
   },
 
-  renderTrend(edges, prev, days) {
-    const esc = Importer.esc;
-    let list = edges.map(e => ({ ...e, delta: null, isNew: false }));
+  trendState: null,
 
+  renderTrend(edges, prev, days) {
+    let list = edges.map(e => ({ ...e, delta: null, isNew: false }));
     if (prev) {
       const before = new Map(prev.edges.map(e => [`${e.topic}|${e.emotion}`, e.weight]));
       const hasPrev = prev.tagged > 0;
       list = list.map(e => {
         const b = before.get(`${e.topic}|${e.emotion}`) ?? 0;
         return { ...e, delta: e.weight - b, isNew: hasPrev && b === 0 };
-      }).sort((a, b) => (b.delta - a.delta) || (b.weight - a.weight));
-      $('trendSub').textContent = `Paling naik dibanding ${days} hari sebelumnya`;
-    } else {
-      $('trendSub').textContent = 'Pasangan topik–emosi terkuat';
+      });
     }
+    this.trendState = { list, days, hasPrev: !!prev };
+    this.drawTrend();
+  },
+
+  drawTrend() {
+    const esc = Importer.esc;
+    if (!this.trendState) return;
+    const { list, days, hasPrev } = this.trendState;
+    const mode = $('trendSort').value;
+    const byWeight = (a, b) => (b.weight - a.weight) || (b.pmi - a.pmi);
+    let sorted, sub;
+    if (mode === 'naik' && hasPrev) {
+      sorted = [...list].sort((a, b) => (b.delta - a.delta) || byWeight(a, b));
+      sub = `Dibanding ${days} hari sebelumnya`;
+    } else if (mode === 'pmi') {
+      sorted = [...list].sort((a, b) => (b.pmi - a.pmi) || (b.weight - a.weight));
+      sub = 'Paling khas muncul bersama (bukan kebetulan)';
+    } else {
+      sorted = [...list].sort(byWeight);
+      sub = mode === 'naik' ? 'Pilih periode 7/30/90 hari untuk melihat yang naik' : 'Jumlah komentar terbanyak';
+    }
+    $('trendSub').textContent = sub;
 
     const badge = (e) => e.delta === null ? ''
       : e.isNew ? ' <span class="up">baru</span>'
       : e.delta > 0 ? ` <span class="up">▲ +${e.delta}</span>`
       : e.delta < 0 ? ` <span class="down">▼ ${e.delta}</span>` : '';
 
-    const top = list.slice(0, CONFIG.TREND_LIMIT);
+    const top = sorted.slice(0, CONFIG.TREND_LIMIT);
     $('trendList').innerHTML = top.length
       ? top.map(e => `<li><b>${esc(e.topic)}</b> × <span style="color:var(--emotion)">${esc(e.emotion)}</span>${badge(e)}
           <span class="muted">· ${e.weight} komentar · PMI ${e.pmi}</span></li>`).join('')
@@ -559,7 +697,7 @@ const UI = {
       `<span class="chip ${n.kind}">${n.label} · ${n.freq}</span>`).join('');
   },
 
-  renderIdea(idea) {
+  renderIdea(idea, id = null, saved = false) {
     const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
     const outline = (idea.outline ?? []).map(o => `<li>${esc(o)}</li>`).join('');
     const tags = (idea.hashtag ?? []).join(' ');
@@ -576,12 +714,47 @@ const UI = {
       <pre class="script">${esc(idea.naskah ?? JSON.stringify(idea, null, 2))}</pre>
       ${idea.cta ? `<p style="margin:6px 0"><b>CTA:</b> ${esc(idea.cta)}</p>` : ''}
       ${tags ? `<p class="muted" style="margin:0 0 8px">${esc(tags)}</p>` : ''}
-      <button class="ghost" id="btnCopy">Salin naskah lengkap</button>`;
+      <div class="row">
+        <button class="ghost" id="btnCopy">Salin naskah lengkap</button>
+        ${id ? `<button class="ghost" id="btnFav">${saved ? '★ Favorit' : '☆ Tandai favorit'}</button>` : ''}
+      </div>`;
+
+    if (id) $('btnFav').onclick = async () => {
+      const next = !(this.ideasCache.find(i => i.id === id)?.saved ?? saved);
+      try {
+        await Data.setSaved(id, next);
+        const row = this.ideasCache.find(i => i.id === id); if (row) row.saved = next;
+        $('btnFav').textContent = next ? '★ Favorit' : '☆ Tandai favorit';
+        this.renderHist();
+      } catch (e) { $('btnFav').textContent = 'Gagal: ' + e.message; }
+    };
 
     $('btnCopy').onclick = async () => {
       try { await navigator.clipboard.writeText(fullText); $('btnCopy').textContent = 'Tersalin ✓'; }
       catch { $('btnCopy').textContent = 'Gagal menyalin'; }
     };
+  },
+
+  /* ---------- Riwayat ide ---------- */
+  ideasCache: [], ideasLoaded: false,
+
+  async loadIdeas() {
+    try { this.ideasCache = await Data.ideas(); this.ideasLoaded = true; }
+    catch (e) { $('ideaHist').innerHTML = `<p class="muted">Gagal memuat riwayat: ${Importer.esc(e.message)}</p>`; return; }
+    this.renderHist();
+  },
+
+  renderHist() {
+    const esc = Importer.esc, favOnly = $('favOnly').checked;
+    const L = this.ideasCache.filter(i => !favOnly || i.saved);
+    $('ideaHist').innerHTML = L.length ? L.map(i => {
+      const d = new Date(i.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      return `<div class="hist">
+        <button class="pick" data-id="${esc(i.id)}"><b>${esc(i.idea?.judul ?? 'Ide tanpa judul')}</b>
+          <span class="muted">${esc(i.idea?.format ?? '')} · ${d} · ${esc((i.cluster_key ?? '').replace(/\|/g, ', ').slice(0, 50))}</span></button>
+        <button class="star" data-star="${esc(i.id)}" aria-label="Favorit">${i.saved ? '★' : '☆'}</button>
+      </div>`;
+    }).join('') : `<p class="muted">${favOnly ? 'Belum ada favorit.' : 'Belum ada ide. Buat dari tab Peta.'}</p>`;
   },
 
   bind() {
@@ -590,6 +763,24 @@ const UI = {
       $('loginMsg').textContent = error ? error.message : '';
     };
     $('btnLogout').onclick = () => sb.auth.signOut();
+    document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => this.setTab(b.dataset.tab));
+    window.addEventListener('hashchange', () => { if (this.authed) this.setTab(location.hash.slice(1), false); });
+    $('trendSort').onchange = () => this.drawTrend();
+    $('favOnly').onchange = () => this.renderHist();
+    $('ideaHist').onclick = async (e) => {
+      const star = e.target.closest('[data-star]');
+      if (star) {
+        const row = this.ideasCache.find(i => i.id === star.dataset.star); if (!row) return;
+        try { await Data.setSaved(row.id, !row.saved); row.saved = !row.saved; this.renderHist(); }
+        catch (err) { star.textContent = '!'; star.title = err.message; }
+        return;
+      }
+      const pick = e.target.closest('[data-id]');
+      if (pick) {
+        const row = this.ideasCache.find(i => i.id === pick.dataset.id);
+        if (row) { this.renderIdea(row.idea, row.id, row.saved); if (innerWidth < 960) $('ideaOut').scrollIntoView({ behavior: 'smooth' }); }
+      }
+    };
     $('btnRefresh').onclick = async () => { await this.loadSources(); this.loadGraph(); };
     $('minWeight').onchange = () => this.loadGraph();
     $('fPeriod').onchange   = () => this.loadGraph();
@@ -598,21 +789,26 @@ const UI = {
 
     $('btnIngest').onclick = async () => {
       const id = this.parseVideoId($('videoId').value);
-      if (!id) return this.status('Isi ID atau URL video dulu.');
-      try { this.status('Mengambil komentar…'); const r = await Data.ingest(id); this.status(`Tersimpan ${r?.inserted ?? 0} komentar. Lanjut klik "Analisis".`); this.loadSources(); }
-      catch (e) { this.status('Gagal ambil: ' + e.message); }
+      if (!id) return this.dstatus('Isi ID atau URL video dulu.');
+      try { this.dstatus('Mengambil komentar…'); const r = await Data.ingest(id); this.dstatus(`Tersimpan ${r?.inserted ?? 0} komentar. Lanjut klik "Analisis".`); this.loadSources(); }
+      catch (e) { this.dstatus('Gagal ambil: ' + e.message); }
     };
 
     $('btnTag').onclick = async () => {
-      try { this.status('Menganalisis komentar…'); const r = await Data.tag(); await this.loadSources(); await this.loadGraph(); this.status(`Dianalisis ${r?.tagged ?? 0} komentar, sisa ${r?.remaining ?? '?'}.`); }
-      catch (e) { this.status('Gagal analisis: ' + e.message); }
+      try { this.dstatus('Menganalisis komentar…'); const r = await Data.tag(); await this.loadSources(); await this.loadGraph(); this.dstatus(`Dianalisis ${r?.tagged ?? 0} komentar, sisa ${r?.remaining ?? '?'}.`); }
+      catch (e) { this.dstatus('Gagal analisis: ' + e.message); }
     };
 
     $('btnIdea').onclick = async () => {
-      $('btnIdea').disabled = true; $('ideaOut').innerHTML = '<p class="muted">Menyusun ide…</p>';
-      try { this.renderIdea(await Data.idea(this.cluster, $('format').value)); }
-      catch (e) { $('ideaOut').innerHTML = `<p class="muted">Gagal: ${e.message}</p>`; }
-      finally { $('btnIdea').disabled = false; }
+      $('btnIdea').disabled = true; $('genMsg').textContent = 'Menyusun ide… (sekitar 10–20 detik)';
+      try {
+        const r = await Data.idea(this.cluster, $('format').value);
+        await this.loadIdeas();                       // ambil riwayat terbaru dari server
+        this.renderIdea(r, r.id, false);
+        $('genMsg').textContent = '';
+        this.setTab('ide');
+      } catch (e) { $('genMsg').textContent = 'Gagal: ' + e.message; }
+      finally { $('btnIdea').disabled = this.cluster.length === 0; }
     };
   },
 
@@ -620,8 +816,13 @@ const UI = {
     $('loginView').classList.toggle('hidden', isAuthed);
     $('appView').classList.toggle('hidden', !isAuthed);
     $('btnLogout').classList.toggle('hidden', !isAuthed);
-    if (isAuthed && !this.loaded) { this.loaded = true; this.loadSources().then(() => this.loadGraph()); }
-    if (!isAuthed) this.loaded = false;
+    this.authed = isAuthed;
+    if (isAuthed && !this.loaded) {
+      this.loaded = true;
+      this.setTab(location.hash.slice(1) || 'peta', false);
+      this.loadSources().then(() => this.loadGraph());
+    }
+    if (!isAuthed) { this.loaded = false; this.ideasLoaded = false; }
   },
 };
 
