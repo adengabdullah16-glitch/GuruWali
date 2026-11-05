@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Swimapp - Sistem Lomba Renang</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
 <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,sans-serif; -webkit-tap-highlight-color:transparent; }
     body { background:#f0f9ff; font-size:13px; color:#0f172a; min-height:100vh; padding-bottom:30px; }
@@ -179,6 +180,14 @@
     .del-btn:hover { background:#fecaca; }
     .save-toast { position:fixed; bottom:20px; right:20px; background:#059669; color:#fff; padding:10px 18px; border-radius:30px; font-size:12px; font-weight:800; box-shadow:0 4px 12px rgba(5,150,105,.4); opacity:0; transform:translateY(20px); transition:.3s; z-index:100; pointer-events:none; }
     .save-toast.show { opacity:1; transform:translateY(0); }
+    .save-toast.error { background:#dc2626; box-shadow:0 4px 12px rgba(220,38,38,.4); max-width:calc(100vw - 40px); }
+    .save-toast.pending { background:#0369a1; }
+    .login-link { color:#0284c7; font-weight:800; text-decoration:none; font-style:normal; }
+    .boot-status { font-size:12px; color:#0369a1; font-weight:800; margin-top:12px; min-height:16px; }
+    @media (max-width: 700px) {
+        .form-header { padding-bottom:12px; }
+        .header-actions { position:static; transform:none; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+    }
 
     /* PANEL RINGKASAN ESTIMASI (ATAS) */
     .estimasi-panel { background:#f0f9ff; border-bottom:2px solid #bae6fd; padding:10px 16px; display:none; }
@@ -389,19 +398,19 @@
 <!-- ==================== LOGIN OVERLAY (PESERTA / CLUB) ==================== -->
 <div class="login-overlay" id="loginOverlay">
     <div class="login-card">
-        <div class="login-logo" id="loginLogo" title="Klik 5x untuk mode admin">🏊‍♂️</div>
+        <div class="login-logo" id="loginLogo">🏊‍♂️</div>
         <div class="login-title">SWIMAPP</div>
         <div class="login-subtitle">Sistem Pendaftaran Lomba Renang</div>
 
-        <div class="login-tabs">
+        <div class="login-tabs" id="loginTabs">
             <button type="button" class="login-tab active" data-logintab="login" onclick="switchLoginTab('login')">🔓 MASUK</button>
-            <button type="button" class="login-tab" data-logintab="register" onclick="switchLoginTab('register')">📝 DAFTAR</button>
+            <button type="button" class="login-tab" data-logintab="register" onclick="switchLoginTab('register')">📝 DAFTAR CLUB</button>
         </div>
 
         <div class="login-form active" id="formLogin">
             <div class="login-input-group">
-                <label>👤 USERNAME</label>
-                <input type="text" id="inpLoginUsername" placeholder="Username club..." autocomplete="username">
+                <label>📧 EMAIL</label>
+                <input type="email" id="inpLoginEmail" placeholder="email@contoh.com" autocomplete="username" inputmode="email">
             </div>
             <div class="login-input-group">
                 <label>🔐 PASSWORD</label>
@@ -409,7 +418,8 @@
             </div>
             <button type="button" class="login-btn" id="btnLoginPeserta" onclick="doLoginPeserta()">🔓 MASUK APLIKASI</button>
             <div class="login-error" id="loginError"></div>
-            <div class="login-hint">Belum punya akun? Klik tab <b>DAFTAR</b> di atas.</div>
+            <div class="login-success" id="loginInfo"></div>
+            <div class="login-hint"><a href="#" class="login-link" onclick="doForgotPassword(); return false;">Lupa password?</a> · Club baru? Klik tab <b>DAFTAR CLUB</b>.</div>
         </div>
 
         <div class="login-form" id="formRegister">
@@ -426,8 +436,8 @@
                 <input type="tel" id="inpRegWa" placeholder="08xxxxxxxxxx" autocomplete="tel">
             </div>
             <div class="login-input-group">
-                <label>👤 USERNAME *</label>
-                <input type="text" id="inpRegUsername" placeholder="Username unik, tanpa spasi..." autocomplete="username">
+                <label>📧 EMAIL (untuk login) *</label>
+                <input type="email" id="inpRegEmail" placeholder="email@contoh.com" autocomplete="email" inputmode="email">
             </div>
             <div class="login-input-group">
                 <label>🔐 PASSWORD * (min. 6 karakter)</label>
@@ -437,25 +447,25 @@
                 <label>🔐 KONFIRMASI PASSWORD *</label>
                 <input type="password" id="inpRegPassword2" placeholder="Ulangi password..." autocomplete="new-password" onkeydown="if(event.key==='Enter') doRegisterPeserta()">
             </div>
-            <button type="button" class="login-btn success" id="btnRegisterPeserta" onclick="doRegisterPeserta()">📝 BUAT AKUN</button>
+            <button type="button" class="login-btn success" id="btnRegisterPeserta" onclick="doRegisterPeserta()">📝 BUAT AKUN CLUB</button>
             <div class="login-error" id="registerError"></div>
             <div class="login-success" id="registerSuccess"></div>
         </div>
-    </div>
-</div>
 
-<!-- ADMIN LOGIN OVERLAY -->
-<div class="admin-login-overlay" id="adminLoginOverlay">
-    <div class="admin-login-card">
-        <button type="button" class="admin-login-close" onclick="closeAdminLogin()">✕</button>
-        <h2>🔐 ADMIN ACCESS</h2>
-        <p>Masukkan password administrator</p>
-        <div class="login-input-group">
-            <label>PASSWORD ADMIN</label>
-            <input type="password" id="inpAdminPassword" placeholder="Password admin..." autocomplete="current-password" onkeydown="if(event.key==='Enter') doLoginAdmin()">
+        <div class="login-form" id="formRecovery">
+            <p style="font-size:12px; color:#475569; margin-bottom:14px; font-weight:700;">🔑 Buat password baru untuk akun Anda.</p>
+            <div class="login-input-group">
+                <label>PASSWORD BARU (min. 6 karakter)</label>
+                <input type="password" id="inpRecPass" autocomplete="new-password">
+            </div>
+            <div class="login-input-group">
+                <label>ULANGI PASSWORD BARU</label>
+                <input type="password" id="inpRecPass2" autocomplete="new-password" onkeydown="if(event.key==='Enter') doSetNewPassword()">
+            </div>
+            <button type="button" class="login-btn" id="btnSetNewPass" onclick="doSetNewPassword()">💾 SIMPAN PASSWORD BARU</button>
+            <div class="login-error" id="recoveryError"></div>
         </div>
-        <button type="button" class="login-btn" id="btnLoginAdmin" onclick="doLoginAdmin()">🔓 MASUK ADMIN</button>
-        <div class="login-error" id="adminLoginError"></div>
+        <div class="boot-status" id="bootStatus"></div>
     </div>
 </div>
 
@@ -482,9 +492,13 @@
                 <label>NAMA KEGIATAN / TEMA:</label>
                 <input type="text" id="inpNamaKegiatan" placeholder="Contoh: KSC SWIMMING COMPETITION 2026" value="KSC SWIMMING COMPETITION 2026 (TIME TRIAL)">
             </div>
+            <label style="display:flex; gap:10px; align-items:center; justify-content:center; font-weight:800; color:#0f172a; margin:-6px 0 18px; cursor:pointer;">
+                <input type="checkbox" id="chkPendaftaranDibuka" onchange="togglePendaftaran(this.checked)" style="width:20px; height:20px; accent-color:#059669;">
+                Pendaftaran club DIBUKA (club bisa tambah/ubah atlet)
+            </label>
             <div class="dash-actions">
                 <button type="button" class="btn btn-master" onclick="downloadMaster()" style="justify-content:center; padding:15px; font-size:14px;">💾 Simpan Master (JSON)</button>
-                <button type="button" class="btn btn-master" onclick="document.getElementById('masterInput').click()" style="justify-content:center; padding:15px; font-size:14px;">📂 Muat Master (JSON)</button>
+                <button type="button" class="btn btn-master" onclick="document.getElementById('masterInput').click()" style="justify-content:center; padding:15px; font-size:14px;">📂 Impor Master (JSON) ke Database</button>
                 <input type="file" id="masterInput" accept=".json" style="display:none;">
                 <button type="button" class="btn btn-success" onclick="document.getElementById('fileInput').click()" style="justify-content:center; padding:15px; font-size:14px; grid-column:1/-1;">📤 Import Form A3 (Excel)</button>
                 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
@@ -492,8 +506,8 @@
         </div>
 
         <div class="dash-card" style="background: #fef3c7; border-color: #fcd34d;">
-            <h2>🔐 Keamanan Admin</h2>
-            <p>Ubah password login administrator.</p>
+            <h2>🔐 Password Akun Admin</h2>
+            <p>Ubah password akun admin yang sedang login.</p>
             <div class="dash-input-group"><label>PASSWORD LAMA:</label><input type="password" id="inpOldPassword" placeholder="Masukkan password lama..." autocomplete="off"></div>
             <div class="dash-input-group"><label>PASSWORD BARU (min. 6 karakter):</label><input type="password" id="inpNewPassword" placeholder="Masukkan password baru..." autocomplete="new-password"></div>
             <div class="dash-input-group"><label>KONFIRMASI PASSWORD BARU:</label><input type="password" id="inpConfirmPassword" placeholder="Ulangi password baru..." autocomplete="new-password"></div>
@@ -734,11 +748,11 @@
         </div>
         <div class="box-item lanes">
             <label>LINTASAN :</label>
-            <input type="number" id="inpLanes" value="8" min="1" max="10" onchange="renderBukuAcara()" oninput="localStorage.setItem('ksc_lanes_v1', this.value)">
+            <input type="number" id="inpLanes" value="8" min="1" max="10" onchange="renderBukuAcara(); saveData()">
         </div>
         <div class="box-item jam">
             <label style="color:#0369a1;">⏱️ JAM MULAI :</label>
-            <input type="time" id="inpJamMulai" value="08:00" onchange="renderBukuAcara()">
+            <input type="time" id="inpJamMulai" value="08:00" onchange="renderBukuAcara(); saveData()">
         </div>
         <div class="box-item" style="background:#f8fafc; border-color:#cbd5e1;">
             <label>Sembunyikan saat Print:</label>
@@ -760,7 +774,7 @@
             
             <div class="estimasi-item durasi">
                 <span class="lbl">Durasi 25M:</span>
-                <input type="number" id="inpDurasiGlobal" min="1" value="3" onchange="renderBukuAcara()" class="estimasi-input-global">
+                <input type="number" id="inpDurasiGlobal" min="1" value="3" onchange="renderBukuAcara(); saveData()" class="estimasi-input-global">
                 <span class="lbl">Mnt</span>
             </div>
             
@@ -959,21 +973,16 @@
     // ============================================================
     // KONSTANTA & STATE GLOBAL v16.2
     // ============================================================
-    const STORAGE_PASSWORD = 'swimapp_password_v1';
-    const STORAGE_CLUBS = 'swimapp_clubs_v1';
-    const STORAGE_SESSION = 'swimapp_session_v2';
-    const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
-    const DEFAULT_PASSWORD = 'admin123';
+    // ---------- KONEKSI SUPABASE ----------
+    // Publishable key memang aman berada di HTML: akses data dijaga oleh Row Level Security di database.
+    const SUPABASE_URL = 'https://xwvglfiwyrocrbbzyaxv.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_gSjXCrVXh4BcPQF0W4hNRQ_avh1wRe_';
+    const IS_RECOVERY = /type=recovery/.test(location.hash);
+    const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-    const STORAGE_KEY = 'ksc_form_a3_v16';
-    const STORAGE_EVENTS = 'ksc_custom_events_v16';
-    const STORAGE_LANES = 'ksc_lanes_v1';
-    const STORAGE_RESULT_META = 'ksc_result_meta_v1';
-    const STORAGE_MVP_SCHEME = 'ksc_mvp_scheme_v1';
+    // Preferensi tampilan per perangkat (tidak perlu disimpan di server)
     const STORAGE_PRINT_COLS = 'ksc_print_cols_v1';
     const STORAGE_HIDDEN_COLS = 'ksc_hidden_cols_v1';
-    const STORAGE_GROUP_MATRIX = 'ksc_group_event_matrix_v1';
-    const STORAGE_DURASI_GLOBAL = 'ksc_durasi_global_v1'; // v16.2
 
     const EVENTS = [
         { key: 'kbgb25', header: 'KB GB 25M', fullName: 'Kickboard Gaya Bebas 25M' },
@@ -1000,7 +1009,7 @@
         'GROUP 3': 5, 'GROUP 2': 6, 'GROUP 1': 7, 'SENIOR': 8, 'TANPA-GROUP': 99
     };
     const GROUP_LIST = ['GROUP 6B', 'GROUP 6A', 'GROUP 5', 'GROUP 4', 'GROUP 3', 'GROUP 2', 'GROUP 1', 'SENIOR'];
-    const COMP_YEAR = 2026;
+    let COMP_YEAR = 2026;
 
     const ALL_COLUMNS = [
         { id: 'no', label: 'NO' }, { id: 'nama', label: 'NAMA LENGKAP' }, { id: 'jk', label: 'L/P' },
@@ -1034,17 +1043,8 @@
     let adminTapCount = 0;
     let adminTapTimer = null;
     let groupEventMatrix = null;
-
-    // ============================================================
-    // HELPER: HASH PASSWORD
-    // ============================================================
-    async function hashPassword(text) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+    let kegiatan = null;          // baris aktif dari tabel kegiatan
+    let customEventsSaved = [];   // salinan nomor lomba terakhir yang tersimpan
 
     // ============================================================
     // HITUNG GROUP
@@ -1104,27 +1104,18 @@
         return m;
     }
     function loadMatrix() {
-        try {
-            const raw = localStorage.getItem(STORAGE_GROUP_MATRIX);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') {
-                    groupEventMatrix = parsed;
-                    GROUP_LIST.concat(['TANPA-GROUP']).forEach(g => {
-                        if (!groupEventMatrix[g]) groupEventMatrix[g] = {};
-                        EVENTS.forEach(ev => {
-                            if (groupEventMatrix[g][ev.key] === undefined) groupEventMatrix[g][ev.key] = false;
-                        });
-                    });
-                    return;
-                }
-            }
-        } catch (e) { console.error(e); }
-        groupEventMatrix = createPresetMatrix();
-        saveMatrix();
+        if (!groupEventMatrix) groupEventMatrix = createPresetMatrix();
     }
-    function saveMatrix() {
-        try { localStorage.setItem(STORAGE_GROUP_MATRIX, JSON.stringify(groupEventMatrix)); } catch (e) { console.error(e); }
+    async function saveMatrix() {
+        if (!kegiatan || currentUser?.role !== 'admin') return false;
+        const rows = [];
+        GROUP_LIST.forEach(g => EVENTS.forEach(ev => rows.push({
+            kegiatan_id: kegiatan.id, group_label: g, ev_key: ev.key,
+            dibuka: !!(groupEventMatrix[g] && groupEventMatrix[g][ev.key])
+        })));
+        const { error } = await sb.from('matriks_group').upsert(rows, { onConflict: 'kegiatan_id,group_label,ev_key' });
+        if (error) { console.error(error); showToast('⚠️ Gagal menyimpan matriks: ' + error.message, 'error', 5000); return false; }
+        return true;
     }
     function isEventAllowedForGroup(groupLabel, evKey) {
         if (!groupEventMatrix) return true;
@@ -1150,21 +1141,37 @@
         return count;
     }
     function formatRupiah(angka) { return angka > 0 ? 'Rp ' + angka.toLocaleString('id-ID') : '-'; }
-    function formatHasil(val) {
-        if (!val) return '';
-        let raw = String(val).replace(/\D/g, '').slice(0, 7);
+    // Waktu disimpan sebagai MILIDETIK (angka). formatHasil(35120) -> "00:35.120"
+    function formatHasil(ms) {
+        if (ms === null || ms === undefined || ms === '' || isNaN(Number(ms))) return '';
+        return formatTimerWaktu(Number(ms));
+    }
+    // Tampilan saat operator mengetik digit: "003512" -> "00:35.12"
+    function formatDigits(val) {
+        let raw = String(val || '').replace(/\D/g, '').slice(0, 7);
         if (raw.length < 3) return raw;
-        let mm = raw.substring(0, 2) || '00';
-        let ss = raw.substring(2, 4) || '00';
-        let mmm = raw.substring(4) || '';
-        let ssNum = parseInt(ss) || 0;
-        if (ssNum > 59) {
-            mm = String((parseInt(mm) || 0) + Math.floor(ssNum / 60)).padStart(2, '0');
-            ss = String(ssNum % 60).padStart(2, '0');
-        }
-        if (mmm.length >= 3) return `${mm}:${ss}.${mmm.substring(0,3)}`;
-        if (mmm.length > 0) return `${mm}:${ss}.${mmm}`;
-        return `${mm}:${ss}`;
+        const mm = raw.substring(0, 2), ss = raw.substring(2, 4), mmm = raw.substring(4);
+        return mmm.length ? `${mm}:${ss}.${mmm}` : `${mm}:${ss}`;
+    }
+    // Digit mmssmmm -> milidetik. "003512" = 00:35.120, "0105120" = 01:05.120
+    function digitsToMs(val) {
+        const d = String(val || '').replace(/\D/g, '').slice(0, 7);
+        if (d.length < 3) return null;
+        const mm = parseInt(d.substring(0, 2)) || 0;
+        const ss = parseInt(d.substring(2, 4)) || 0;
+        const frac = (d.substring(4) + '000').substring(0, 3);
+        return (mm * 60 + ss) * 1000 + (parseInt(frac) || 0);
+    }
+    // Isi sel Excel / teks -> milidetik. Menerima "00:35.120", "0:35.12", "003512", atau angka waktu Excel.
+    function parseTimeInput(v) {
+        if (v === null || v === undefined || v === '') return null;
+        if (typeof v === 'number') return (v > 0 && v < 1) ? Math.round(v * 86400000) : null;
+        const s = String(v).trim();
+        if (!s) return null;
+        const m = s.match(/^(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?$/);
+        if (m) return (parseInt(m[1]) * 60 + parseInt(m[2])) * 1000 + parseInt((m[3] || '0').padEnd(3, '0'));
+        const d = s.replace(/\D/g, '');
+        return d.length >= 6 ? digitsToMs(d) : null;
     }
     function formatTimerWaktu(ms) {
         const m = Math.floor(ms / 60000);
@@ -1260,188 +1267,149 @@
     }
 
     // ============================================================
-    // STORAGE: CLUBS & SESSION
+    // AUTH (SUPABASE)
     // ============================================================
-    function loadClubs() {
-        try {
-            const raw = localStorage.getItem(STORAGE_CLUBS);
-            clubs = raw ? JSON.parse(raw) : [];
-        } catch (e) { clubs = []; }
-    }
-    function saveClubs() {
-        try { localStorage.setItem(STORAGE_CLUBS, JSON.stringify(clubs)); } catch (e) { console.error(e); }
-    }
-    function saveSession(user) {
-        currentUser = user;
-        sessionStorage.setItem(STORAGE_SESSION, JSON.stringify({ ...user, loginTime: Date.now(), lastActivity: Date.now() }));
-    }
-    function loadSession() {
-        try {
-            const raw = sessionStorage.getItem(STORAGE_SESSION);
-            if (!raw) return null;
-            const s = JSON.parse(raw);
-            if (Date.now() - s.lastActivity > SESSION_TIMEOUT_MS) { sessionStorage.removeItem(STORAGE_SESSION); return null; }
-            return s;
-        } catch (e) { return null; }
-    }
-    function touchSession() {
-        if (!currentUser) return;
-        try {
-            const raw = sessionStorage.getItem(STORAGE_SESSION);
-            if (!raw) return;
-            const s = JSON.parse(raw);
-            s.lastActivity = Date.now();
-            sessionStorage.setItem(STORAGE_SESSION, JSON.stringify(s));
-        } catch (e) {}
-    }
-    let activityThrottle = null;
-    function throttledTouch() {
-        if (!currentUser) return;
-        if (activityThrottle) return;
-        activityThrottle = setTimeout(() => { touchSession(); activityThrottle = null; }, 5000);
-    }
-    document.addEventListener('mousemove', throttledTouch);
-    document.addEventListener('keydown', throttledTouch);
-    document.addEventListener('click', throttledTouch);
+    function val(id) { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+    function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+    function appRedirectUrl() { return location.origin + location.pathname; }
 
-    function clearSession() {
-        sessionStorage.removeItem(STORAGE_SESSION);
-        currentUser = null;
+    function translateAuthError(err) {
+        const m = (err && (err.message || String(err))) || '';
+        if (/Invalid login credentials/i.test(m)) return 'Email atau password salah.';
+        if (/Email not confirmed/i.test(m)) return 'Email belum dikonfirmasi. Buka email Anda dan klik link konfirmasi.';
+        if (/already registered|already been registered/i.test(m)) return 'Email ini sudah terdaftar. Silakan login.';
+        if (/rate limit|too many|security purposes/i.test(m)) return 'Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.';
+        if (/Password should be|weak password/i.test(m)) return 'Password terlalu lemah (minimal 6 karakter).';
+        if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'Tidak ada koneksi ke server. Periksa internet Anda.';
+        return m;
+    }
+    function isNetworkError(err) {
+        return /Failed to fetch|NetworkError|Load failed|network|timeout/i.test((err && err.message) || '');
     }
 
-    // ============================================================
-    // LOGIN UI
-    // ============================================================
     function switchLoginTab(tab) {
         document.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.logintab === tab));
-        document.getElementById('formLogin').classList.toggle('active', tab === 'login');
-        document.getElementById('formRegister').classList.toggle('active', tab === 'register');
-        document.getElementById('loginError').classList.remove('show');
-        document.getElementById('registerError').classList.remove('show');
-        document.getElementById('registerSuccess').classList.remove('show');
+        const map = { login: 'formLogin', register: 'formRegister', recovery: 'formRecovery' };
+        Object.values(map).forEach(id => document.getElementById(id).classList.remove('active'));
+        document.getElementById(map[tab] || 'formLogin').classList.add('active');
+        document.getElementById('loginTabs').style.display = tab === 'recovery' ? 'none' : '';
+        ['loginError', 'loginInfo', 'registerError', 'registerSuccess', 'recoveryError'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.classList.remove('show');
+        });
     }
     window.switchLoginTab = switchLoginTab;
 
-    function showLoginError(msg) { const el = document.getElementById('loginError'); el.textContent = msg; el.classList.add('show'); }
-    function showRegisterError(msg) { const el = document.getElementById('registerError'); el.textContent = msg; el.classList.add('show'); document.getElementById('registerSuccess').classList.remove('show'); }
-    function showRegisterSuccess(msg) { const el = document.getElementById('registerSuccess'); el.textContent = msg; el.classList.add('show'); document.getElementById('registerError').classList.remove('show'); }
+    function showMsg(id, msg) { const el = document.getElementById(id); if (!el) return; el.textContent = msg; el.classList.add('show'); }
+    function showLoginError(msg) { document.getElementById('loginInfo').classList.remove('show'); showMsg('loginError', msg); }
+    function showRegisterError(msg) { document.getElementById('registerSuccess').classList.remove('show'); showMsg('registerError', msg); }
+    function showRegisterSuccess(msg) { document.getElementById('registerError').classList.remove('show'); showMsg('registerSuccess', msg); }
+    function setBootStatus(msg) { const el = document.getElementById('bootStatus'); if (el) el.textContent = msg || ''; }
 
     window.doRegisterPeserta = async function() {
-        const namaClub = (document.getElementById('inpRegClub').value || '').trim();
-        const official = (document.getElementById('inpRegOfficial').value || '').trim();
-        const wa = (document.getElementById('inpRegWa').value || '').trim();
-        const username = (document.getElementById('inpRegUsername').value || '').trim().toLowerCase();
+        const namaClub = val('inpRegClub'), official = val('inpRegOfficial'), wa = val('inpRegWa');
+        const email = val('inpRegEmail').toLowerCase();
         const pass = document.getElementById('inpRegPassword').value || '';
         const pass2 = document.getElementById('inpRegPassword2').value || '';
-
-        if (!namaClub || !official || !wa || !username || !pass || !pass2) { showRegisterError('❌ Semua field wajib diisi!'); return; }
-        if (username.length < 3) { showRegisterError('❌ Username minimal 3 karakter!'); return; }
-        if (!/^[a-z0-9_.-]+$/.test(username)) { showRegisterError('❌ Username hanya boleh huruf kecil, angka, titik, dash, underscore (tanpa spasi).'); return; }
+        if (!namaClub || !official || !wa || !email || !pass || !pass2) { showRegisterError('❌ Semua field wajib diisi!'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showRegisterError('❌ Format email tidak valid.'); return; }
         if (pass.length < 6) { showRegisterError('❌ Password minimal 6 karakter!'); return; }
         if (pass !== pass2) { showRegisterError('❌ Konfirmasi password tidak cocok!'); return; }
-        if (wa.replace(/\D/g,'').length < 9) { showRegisterError('❌ No. WA tidak valid (min. 9 digit angka).'); return; }
-        if (clubs.some(c => c.username === username)) { showRegisterError('❌ Username sudah dipakai. Pilih yang lain.'); return; }
+        if (wa.replace(/\D/g, '').length < 9) { showRegisterError('❌ No. WA tidak valid (min. 9 digit angka).'); return; }
 
         const btn = document.getElementById('btnRegisterPeserta');
         btn.disabled = true; btn.textContent = '⏳ MEMBUAT AKUN...';
         try {
-            const hash = await hashPassword(pass);
-            const newClub = {
-                id: 'club_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
-                namaClub, official, wa: formatWa(wa), waOriginal: wa,
-                username, passwordHash: hash, createdAt: new Date().toISOString(), locked: false
-            };
-            clubs.push(newClub);
-            saveClubs();
-            showRegisterSuccess('✅ Akun berhasil dibuat! Silakan login.');
-            document.getElementById('inpRegClub').value = '';
-            document.getElementById('inpRegOfficial').value = '';
-            document.getElementById('inpRegWa').value = '';
-            document.getElementById('inpRegUsername').value = '';
-            document.getElementById('inpRegPassword').value = '';
-            document.getElementById('inpRegPassword2').value = '';
-            setTimeout(() => {
-                switchLoginTab('login');
-                document.getElementById('inpLoginUsername').value = username;
-                document.getElementById('inpLoginPassword').focus();
-            }, 1200);
-        } catch (e) { showRegisterError('❌ Gagal: ' + e.message); }
-        btn.disabled = false; btn.textContent = '📝 BUAT AKUN';
+            const { data, error } = await sb.auth.signUp({
+                email, password: pass,
+                options: { data: { nama_club: namaClub, official, wa }, emailRedirectTo: appRedirectUrl() }
+            });
+            if (error) throw error;
+            if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+                showRegisterError('❌ Email ini sudah terdaftar. Silakan login.');
+                return;
+            }
+            ['inpRegClub', 'inpRegOfficial', 'inpRegWa', 'inpRegEmail', 'inpRegPassword', 'inpRegPassword2'].forEach(id => setVal(id, ''));
+            if (data.session) {
+                showRegisterSuccess('✅ Akun berhasil dibuat. Memuat aplikasi...');
+                await bootAfterLogin(data.user);
+            } else {
+                showRegisterSuccess('✅ Akun dibuat. Cek email ' + email + ', klik link konfirmasi, lalu login.');
+                setVal('inpLoginEmail', email);
+            }
+        } catch (e) {
+            showRegisterError('❌ ' + translateAuthError(e));
+        } finally {
+            btn.disabled = false; btn.textContent = '📝 BUAT AKUN CLUB';
+        }
     };
 
     window.doLoginPeserta = async function() {
-        const username = (document.getElementById('inpLoginUsername').value || '').trim().toLowerCase();
+        const email = val('inpLoginEmail').toLowerCase();
         const pass = document.getElementById('inpLoginPassword').value || '';
+        if (!email || !pass) { showLoginError('❌ Email & password wajib diisi.'); return; }
         const btn = document.getElementById('btnLoginPeserta');
-        if (!username || !pass) { showLoginError('❌ Username & password wajib diisi.'); return; }
         btn.disabled = true; btn.textContent = '⏳ MEMPROSES...';
         try {
-            const club = clubs.find(c => c.username === username);
-            if (!club) { showLoginError('❌ Username tidak ditemukan.'); btn.disabled = false; btn.textContent = '🔓 MASUK APLIKASI'; return; }
-            const hash = await hashPassword(pass);
-            if (hash !== club.passwordHash) { showLoginError('❌ Password salah.'); btn.disabled = false; btn.textContent = '🔓 MASUK APLIKASI'; return; }
-            saveSession({ role: 'club', clubId: club.id, namaClub: club.namaClub, official: club.official, username: club.username });
-            hideLoginOverlay();
-            applyRoleUI();
-        } catch (e) { showLoginError('❌ Error: ' + e.message); }
-        btn.disabled = false; btn.textContent = '🔓 MASUK APLIKASI';
+            const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+            if (error) throw error;
+            setVal('inpLoginPassword', '');
+            await bootAfterLogin(data.user);
+        } catch (e) {
+            showLoginError('❌ ' + translateAuthError(e));
+        } finally {
+            btn.disabled = false; btn.textContent = '🔓 MASUK APLIKASI';
+        }
     };
 
-    window.doLoginAdmin = async function() {
-        const pass = document.getElementById('inpAdminPassword').value || '';
-        const btn = document.getElementById('btnLoginAdmin');
-        const err = document.getElementById('adminLoginError');
-        err.classList.remove('show');
-        if (!pass) { err.textContent = '❌ Password wajib diisi.'; err.classList.add('show'); return; }
-        btn.disabled = true; btn.textContent = '⏳ MEMPROSES...';
+    window.doForgotPassword = async function() {
+        const email = val('inpLoginEmail').toLowerCase();
+        if (!email) { showLoginError('❌ Isi EMAIL Anda dulu, lalu klik "Lupa password?" lagi.'); return; }
         try {
-            const storedHash = localStorage.getItem(STORAGE_PASSWORD);
-            const inputHash = await hashPassword(pass);
-            if (inputHash === storedHash) {
-                saveSession({ role: 'admin' });
-                closeAdminLogin();
-                hideLoginOverlay();
-                applyRoleUI();
-            } else {
-                err.textContent = '❌ Password admin salah.';
-                err.classList.add('show');
-                document.getElementById('inpAdminPassword').value = '';
-            }
-        } catch (e) { err.textContent = '❌ Error: ' + e.message; err.classList.add('show'); }
-        btn.disabled = false; btn.textContent = '🔓 MASUK ADMIN';
+            const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: appRedirectUrl() });
+            if (error) throw error;
+            document.getElementById('loginError').classList.remove('show');
+            showMsg('loginInfo', '📧 Link reset password dikirim ke ' + email + '. Buka link itu di perangkat ini.');
+        } catch (e) { showLoginError('❌ ' + translateAuthError(e)); }
     };
 
-    window.openAdminLogin = function() {
-        document.getElementById('adminLoginOverlay').classList.add('show');
-        setTimeout(() => document.getElementById('inpAdminPassword').focus(), 100);
-    };
-    window.closeAdminLogin = function() {
-        document.getElementById('adminLoginOverlay').classList.remove('show');
-        document.getElementById('inpAdminPassword').value = '';
-        document.getElementById('adminLoginError').classList.remove('show');
+    window.doSetNewPassword = async function() {
+        const p1 = document.getElementById('inpRecPass').value || '';
+        const p2 = document.getElementById('inpRecPass2').value || '';
+        if (p1.length < 6) { showMsg('recoveryError', '❌ Password minimal 6 karakter.'); return; }
+        if (p1 !== p2) { showMsg('recoveryError', '❌ Konfirmasi password tidak cocok.'); return; }
+        const btn = document.getElementById('btnSetNewPass');
+        btn.disabled = true;
+        try {
+            const { error } = await sb.auth.updateUser({ password: p1 });
+            if (error) throw error;
+            history.replaceState(null, '', appRedirectUrl());
+            const { data } = await sb.auth.getUser();
+            switchLoginTab('login');
+            showMsg('loginInfo', '✅ Password baru tersimpan.');
+            if (data && data.user) await bootAfterLogin(data.user);
+        } catch (e) { showMsg('recoveryError', '❌ ' + translateAuthError(e)); }
+        finally { btn.disabled = false; }
     };
 
-    window.doLogout = function() {
-        if (!confirm('Yakin ingin keluar dari aplikasi?')) return;
-        clearSession();
+    // Logout: ketuk dua kali (tidak memakai confirm(), karena dialog bisa diblokir di HP/pratinjau)
+    let logoutArmed = false, logoutTimer = null;
+    window.doLogout = async function() {
+        const btn = document.querySelector('.logout-btn');
+        if (!logoutArmed) {
+            logoutArmed = true;
+            btn.textContent = '⚠️ Ketuk lagi untuk keluar';
+            logoutTimer = setTimeout(() => { logoutArmed = false; btn.textContent = '🚪 LOGOUT'; }, 3000);
+            return;
+        }
+        clearTimeout(logoutTimer);
+        btn.textContent = '⏳ Keluar...';
+        try { if (syncState !== 'ok' || syncTimer) await syncNow(); } catch (e) {}
+        try { await sb.auth.signOut(); } catch (e) {}
         location.reload();
     };
 
     function hideLoginOverlay() { document.getElementById('loginOverlay').classList.add('hidden'); }
     function showLoginOverlay() { document.getElementById('loginOverlay').classList.remove('hidden'); }
-
-    document.getElementById('loginLogo').addEventListener('click', function() {
-        adminTapCount++;
-        clearTimeout(adminTapTimer);
-        adminTapTimer = setTimeout(() => { adminTapCount = 0; }, 1500);
-        if (adminTapCount >= 5) { adminTapCount = 0; openAdminLogin(); }
-    });
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
-            e.preventDefault();
-            openAdminLogin();
-        }
-    });
 
     // ============================================================
     // ROLE UI
@@ -1517,7 +1485,7 @@
         if (!container) return;
         if (clubs.length === 0) { container.innerHTML = '<div class="club-empty">Belum ada club terdaftar.</div>'; return; }
         let html = `<table class="club-table"><thead><tr>
-            <th>CLUB</th><th>OFFICIAL</th><th>USERNAME</th><th>WA</th><th>ATLET</th><th>STATUS</th><th style="text-align:right;">AKSI</th>
+            <th>CLUB</th><th>OFFICIAL</th><th>EMAIL LOGIN</th><th>WA</th><th>ATLET</th><th>STATUS</th><th style="text-align:right;">AKSI</th>
         </tr></thead><tbody>`;
         clubs.forEach(c => {
             const totalAtlet = dataPeserta.filter(p => p.ownerClubId === c.id).length;
@@ -1530,7 +1498,7 @@
                 <td>${c.locked ? '<span style="color:#dc2626; font-weight:900;">🔒 TERKUNCI</span>' : '<span style="color:#059669; font-weight:900;">🔓 AKTIF</span>'}</td>
                 <td class="actions-cell">
                     <button type="button" class="btn ${c.locked ? 'btn-unlock' : 'btn-lock'} btn-xs" onclick="toggleClubLock('${c.id}')">${c.locked ? '🔓 Buka' : '🔒 Kunci'}</button>
-                    <button type="button" class="btn btn-outline btn-xs" onclick="resetClubPassword('${c.id}')">🔑 Reset PW</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="resetClubPassword('${c.id}')">📧 Reset PW</button>
                     <button type="button" class="btn btn-danger btn-xs" onclick="deleteClub('${c.id}')">🗑️</button>
                 </td>
             </tr>`;
@@ -1539,33 +1507,39 @@
         container.innerHTML = html;
     };
 
-    window.toggleClubLock = function(clubId) {
+    window.toggleClubLock = async function(clubId) {
         const c = clubs.find(x => x.id === clubId);
         if (!c) return;
+        const { error } = await sb.from('club').update({ locked: !c.locked }).eq('id', clubId);
+        if (error) { alert('❌ Gagal mengubah status club: ' + error.message); return; }
         c.locked = !c.locked;
-        saveClubs();
         renderClubAccounts();
-        if (currentUser?.role === 'club' && currentUser.clubId === clubId) applyRoleUI();
     };
 
+    // Admin tidak bisa melihat/mengganti password club. Yang bisa: kirim email reset ke club.
     window.resetClubPassword = async function(clubId) {
         const c = clubs.find(x => x.id === clubId);
         if (!c) return;
-        const newPw = prompt(`Reset password untuk "${c.namaClub}"?\nMasukkan password baru (min. 6 karakter):`);
-        if (!newPw) return;
-        if (newPw.length < 6) { alert('❌ Minimal 6 karakter.'); return; }
-        c.passwordHash = await hashPassword(newPw);
-        saveClubs();
-        alert(`✅ Password "${c.namaClub}" berhasil direset.\nBeritahu pelatih: ${newPw}`);
+        if (!confirm(`Kirim email reset password ke ${c.username} (${c.namaClub})?`)) return;
+        const { error } = await sb.auth.resetPasswordForEmail(c.username, { redirectTo: appRedirectUrl() });
+        alert(error ? '❌ ' + translateAuthError(error) : '✅ Email reset terkirim. Minta pelatih membuka email tersebut.');
     };
 
-    window.deleteClub = function(clubId) {
+    window.deleteClub = async function(clubId) {
         const c = clubs.find(x => x.id === clubId);
         if (!c) return;
-        if (!confirm(`Hapus akun club "${c.namaClub}"?\n\nCatatan: Data atlet yang sudah didaftarkan TIDAK akan terhapus, tapi menjadi data manual.`)) return;
+        if (!confirm(`Hapus profil club "${c.namaClub}"?\n\n• Atlet yang sudah didaftarkan TIDAK terhapus, menjadi data manual admin.\n• Akun login (${c.username}) masih ada di Supabase → Authentication. Hapus di sana jika perlu.`)) return;
+        const { error } = await sb.from('club').delete().eq('id', clubId);
+        if (error) { alert('❌ Gagal menghapus club: ' + error.message); return; }
         clubs = clubs.filter(x => x.id !== clubId);
-        saveClubs();
+        dataPeserta.forEach(p => { if (p.ownerClubId === clubId) { p.ownerClubId = null; snapPeserta.set(p.id, pesertaSer(p)); } });
         renderClubAccounts();
+    };
+
+    window.togglePendaftaran = function(checked) {
+        if (!kegiatan) return;
+        kegiatan.pendaftaran_dibuka = !!checked;
+        saveData();
     };
 
     window.renderMatrixDashboard = function() {
@@ -1678,119 +1652,516 @@
     };
 
     window.doChangePassword = async function() {
-        const oldPwd = (document.getElementById('inpOldPassword').value || '').trim();
-        const newPwd = (document.getElementById('inpNewPassword').value || '').trim();
-        const confirmPwd = (document.getElementById('inpConfirmPassword').value || '').trim();
+        const oldPwd = document.getElementById('inpOldPassword').value || '';
+        const newPwd = document.getElementById('inpNewPassword').value || '';
+        const confirmPwd = document.getElementById('inpConfirmPassword').value || '';
         if (!oldPwd || !newPwd || !confirmPwd) { alert('❌ Semua kolom harus diisi!'); return; }
         if (newPwd.length < 6) { alert('❌ Password baru minimal 6 karakter!'); return; }
         if (newPwd !== confirmPwd) { alert('❌ Konfirmasi password tidak cocok!'); return; }
         try {
-            const oldHash = await hashPassword(oldPwd);
-            if (oldHash !== localStorage.getItem(STORAGE_PASSWORD)) { alert('❌ Password lama salah!'); return; }
-            localStorage.setItem(STORAGE_PASSWORD, await hashPassword(newPwd));
-            document.getElementById('inpOldPassword').value = '';
-            document.getElementById('inpNewPassword').value = '';
-            document.getElementById('inpConfirmPassword').value = '';
-            alert('✅ Password admin berhasil diubah!');
-        } catch (e) { alert('❌ Gagal: ' + e.message); }
+            const { error: e1 } = await sb.auth.signInWithPassword({ email: currentUser.email, password: oldPwd });
+            if (e1) { alert('❌ Password lama salah!'); return; }
+            const { error: e2 } = await sb.auth.updateUser({ password: newPwd });
+            if (e2) throw e2;
+            ['inpOldPassword', 'inpNewPassword', 'inpConfirmPassword'].forEach(id => setVal(id, ''));
+            alert('✅ Password berhasil diubah!');
+        } catch (e) { alert('❌ Gagal: ' + translateAuthError(e)); }
     };
 
-    async function initPassword() {
-        if (!localStorage.getItem(STORAGE_PASSWORD)) {
-            localStorage.setItem(STORAGE_PASSWORD, await hashPassword(DEFAULT_PASSWORD));
-        }
-    }
     // ============================================================
-    // LOAD / SAVE DATA PESERTA
+    // DATA LAYER (SUPABASE)
+    // Data di memori tetap berbentuk seperti versi lama (dataPeserta, p.hasil, dst).
+    // saveData() membandingkan data sekarang dengan "snapshot" terakhir dari server,
+    // lalu hanya mengirim baris yang berubah. Gagal kirim (mis. internet putus) -> dicoba lagi otomatis.
     // ============================================================
-    function loadData() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                dataPeserta = parsed.peserta || [];
-                globalHarga = parsed.harga || 0;
-                globalNamaKegiatan = parsed.namaKegiatan || 'KSC SWIMMING COMPETITION 2026 (TIME TRIAL)';
-                const hargaEl = document.getElementById('inpHarga');
-                const namaEl = document.getElementById('inpNamaKegiatan');
-                if (hargaEl) hargaEl.value = globalHarga;
-                if (namaEl) namaEl.value = globalNamaKegiatan;
-            }
-            const rawEvents = localStorage.getItem(STORAGE_EVENTS);
-            if (rawEvents) {
-                customEvents = JSON.parse(rawEvents);
-                customEvents = customEvents.map(ev => {
-                    if (ev.title && ev.title.includes(' - ')) return { ...ev, title: ev.title.split(' - ')[0].trim() };
-                    return ev;
-                });
-            }
-            const rawMeta = localStorage.getItem(STORAGE_RESULT_META);
-            if (rawMeta) {
-                resultMeta = JSON.parse(rawMeta);
-                const tm = document.getElementById('inpTitimangsa');
-                const rf = document.getElementById('inpReferee');
-                if (tm) tm.value = resultMeta.titimangsa || '';
-                if (rf) rf.value = resultMeta.referee || '';
-            }
-            const rawScheme = localStorage.getItem(STORAGE_MVP_SCHEME);
-            if (rawScheme) {
-                const el = document.getElementById('bsPointScheme');
-                if (el) el.value = rawScheme;
-            }
-            const rawHidden = localStorage.getItem(STORAGE_HIDDEN_COLS);
-            if (rawHidden) hiddenCols = new Set(JSON.parse(rawHidden));
-            loadMatrix();
-            updateGlobalTitle();
-        } catch (e) { console.error(e); }
+    let snapPeserta = new Map();   // id -> JSON baris peserta terakhir yang ada di server
+    let snapHasil = new Map();     // "pesertaId|evKey" -> JSON baris hasil terakhir di server
+    let snapKegiatan = '';
+    let syncTimer = null, syncing = false, syncAgain = false, syncState = 'ok';
+    let rejectedInSync = false;   // pesan penolakan jangan tertimpa toast "Tersimpan"
+    let rtChannel = null;
+
+    function newId() {
+        if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+    function idxById(id) { return dataPeserta.findIndex(p => p.id === id); }
+    function isAdmin() { return currentUser?.role === 'admin'; }
+    function chunks(arr, n) { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function getLanes() { return Math.min(10, Math.max(1, parseInt(val('inpLanes')) || 8)); }
+    function getJamMulai() { return (val('inpJamMulai') || '08:00').slice(0, 5); }
+    function getDurasi() { const v = parseFloat(val('inpDurasiGlobal')); return v > 0 ? Math.min(v, 999) : 3; }
+    function cloneEvents(list) { return (list || []).map(e => ({ ...e })); }
+
+    function rowToLocal(r) {
+        const p = {
+            id: r.id, nama: r.nama || '', jk: r.jk || '', klub: r.klub || '',
+            tahun: r.tahun_lahir ? String(r.tahun_lahir) : '', seed: r.seed || '', ket: r.ket || '',
+            namaPelatih: r.nama_pelatih || '', noPelatih: r.no_pelatih || '',
+            ownerClubId: r.club_id || null,
+            hasil: {}, statusHasil: {}, ketHasil: {}
+        };
+        const nomor = r.nomor || [];
+        EVENTS.forEach(ev => { p[ev.key] = nomor.includes(ev.key); });
+        return p;
+    }
+    function localToRow(p) {
+        const y = parseInt(p.tahun);
+        return {
+            id: p.id,
+            kegiatan_id: kegiatan.id,
+            club_id: p.ownerClubId || null,
+            nama: p.nama || '',
+            jk: (p.jk === 'L' || p.jk === 'P') ? p.jk : null,
+            klub: p.klub || '',
+            tahun_lahir: (y >= 1900 && y <= 2100) ? y : null,
+            seed: p.seed || '',
+            nomor: EVENTS.filter(ev => p[ev.key]).map(ev => ev.key),
+            ket: p.ket || '',
+            nama_pelatih: p.namaPelatih || '',
+            no_pelatih: p.noPelatih || ''
+        };
+    }
+    function pesertaSer(p) { return JSON.stringify(localToRow(p)); }
+
+    function hasilSer(p, ev) {
+        const w = p.hasil ? p.hasil[ev] : null;
+        const st = (p.statusHasil && p.statusHasil[ev]) || null;
+        const k = (p.ketHasil && p.ketHasil[ev]) || '';
+        const waktu = (w === null || w === undefined || w === '' || isNaN(Number(w))) ? null : Math.round(Number(w));
+        if (waktu === null && !st && !k) return null;
+        return JSON.stringify({ peserta_id: p.id, ev_key: ev, waktu_ms: waktu, status: st, ket: k });
+    }
+    function collectHasil() {
+        const m = new Map();
+        dataPeserta.forEach(p => {
+            const evs = new Set([...Object.keys(p.hasil || {}), ...Object.keys(p.statusHasil || {}), ...Object.keys(p.ketHasil || {})]);
+            evs.forEach(ev => { const s = hasilSer(p, ev); if (s) m.set(p.id + '|' + ev, s); });
+        });
+        return m;
+    }
+    function applyHasilRow(p, r) {
+        if (!p.hasil) p.hasil = {};
+        if (!p.statusHasil) p.statusHasil = {};
+        if (!p.ketHasil) p.ketHasil = {};
+        if (r.waktu_ms === null || r.waktu_ms === undefined) delete p.hasil[r.ev_key]; else p.hasil[r.ev_key] = Number(r.waktu_ms);
+        if (r.status) p.statusHasil[r.ev_key] = r.status; else delete p.statusHasil[r.ev_key];
+        if (r.ket) p.ketHasil[r.ev_key] = r.ket; else delete p.ketHasil[r.ev_key];
+    }
+    function collectKegiatan() {
+        return JSON.stringify({
+            nama: globalNamaKegiatan,
+            harga_per_nomor: Math.max(0, Math.round(globalHarga) || 0),
+            jumlah_lintasan: getLanes(),
+            jam_mulai: getJamMulai(),
+            durasi_25m_menit: getDurasi(),
+            titimangsa: resultMeta.titimangsa || '',
+            referee: resultMeta.referee || '',
+            mvp_scheme: val('bsPointScheme') || '5-3-2-1',
+            pendaftaran_dibuka: !!kegiatan.pendaftaran_dibuka
+        });
+    }
+    function clubRowToLocal(c) {
+        return { id: c.id, namaClub: c.nama_club, official: c.official, wa: formatWa(c.wa), waOriginal: c.wa,
+                 username: c.email, createdAt: c.created_at, locked: !!c.locked };
+    }
+    function rebuildSnapshots() {
+        snapPeserta = new Map(dataPeserta.map(p => [p.id, pesertaSer(p)]));
+        snapHasil = isAdmin() ? collectHasil() : new Map();
+        snapKegiatan = isAdmin() ? collectKegiatan() : '';
     }
 
-    let toastTimeout = null;
-    function saveData() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                peserta: dataPeserta, harga: globalHarga, namaKegiatan: globalNamaKegiatan
-            }));
-            localStorage.setItem(STORAGE_EVENTS, JSON.stringify(customEvents));
-            isDirty = false;
-            const toast = document.getElementById('saveToast');
-            if (toast) {
-                toast.classList.add('show');
-                clearTimeout(toastTimeout);
-                toastTimeout = setTimeout(() => toast.classList.remove('show'), 1500);
-            }
-        } catch (e) {
-            console.error(e);
-            alert('⚠️ Gagal menyimpan data ke browser. Kemungkinan localStorage penuh.');
+    function applyKegiatanToUI() {
+        const k = kegiatan;
+        COMP_YEAR = parseInt(k.comp_year) || COMP_YEAR;
+        globalNamaKegiatan = k.nama || globalNamaKegiatan;
+        globalHarga = Number(k.harga_per_nomor) || 0;
+        resultMeta = { titimangsa: k.titimangsa || '', referee: k.referee || '' };
+        setVal('inpNamaKegiatan', globalNamaKegiatan);
+        setVal('inpHarga', globalHarga);
+        setVal('inpTitimangsa', resultMeta.titimangsa);
+        setVal('inpReferee', resultMeta.referee);
+        setVal('inpLanes', k.jumlah_lintasan || 8);
+        setVal('inpJamMulai', String(k.jam_mulai || '08:00').slice(0, 5));
+        setVal('inpDurasiGlobal', Number(k.durasi_25m_menit) || 3);
+        setVal('bsPointScheme', k.mvp_scheme || '5-3-2-1');
+        if (!val('bsPointScheme')) setVal('bsPointScheme', '5-3-2-1');
+        const chk = document.getElementById('chkPendaftaranDibuka');
+        if (chk) chk.checked = !!k.pendaftaran_dibuka;
+        updateGlobalTitle();
+    }
+
+    function defaultCustomEvents() {
+        const list = []; let c = 101;
+        EVENTS.forEach(ev => {
+            if (c % 2 === 0) c++;
+            list.push({ title: `${c}`, evKey: ev.key, jk: 'L' }); c++;
+            if (c % 2 !== 0) c++;
+            list.push({ title: `${c}`, evKey: ev.key, jk: 'P' }); c++;
+        });
+        return list;
+    }
+
+    async function fetchAll(makeQuery) {
+        const size = 1000; let from = 0; const out = [];
+        while (true) {
+            const { data, error } = await makeQuery().range(from, from + size - 1);
+            if (error) throw error;
+            out.push(...(data || []));
+            if (!data || data.length < size) break;
+            from += size;
         }
+        return out;
     }
 
-    function saveResultMeta() {
-        resultMeta.titimangsa = document.getElementById('inpTitimangsa').value;
-        resultMeta.referee = document.getElementById('inpReferee').value;
-        localStorage.setItem(STORAGE_RESULT_META, JSON.stringify(resultMeta));
-    }
+    async function loadAll() {
+        const { data: kegs, error: eK } = await sb.from('kegiatan').select('*').eq('aktif', true).order('created_at', { ascending: false }).limit(1);
+        if (eK) throw eK;
+        if (!kegs || !kegs.length) throw new Error('Belum ada kegiatan aktif di database (tabel kegiatan kosong). Jalankan schema.sql dulu.');
+        kegiatan = kegs[0];
+        applyKegiatanToUI();
 
-    function initCustomEvents() {
-        if (customEvents && customEvents.length > 0) {
-            if (localStorage.getItem(STORAGE_EVENTS)) return;
-        }
-        if (!customEvents || customEvents.length === 0) {
-            let c = 101;
-            EVENTS.forEach(ev => {
-                if (c % 2 === 0) c++;
-                customEvents.push({ id: Date.now() + Math.random(), title: `${c}`, evKey: ev.key, jk: 'L' });
-                c++;
-                if (c % 2 !== 0) c++;
-                customEvents.push({ id: Date.now() + Math.random(), title: `${c}`, evKey: ev.key, jk: 'P' });
-                c++;
+        const nomor = await fetchAll(() => sb.from('nomor_lomba').select('*').eq('kegiatan_id', kegiatan.id).order('nomor'));
+        customEvents = nomor.map(r => ({ id: r.id, title: String(r.nomor), evKey: r.ev_key, jk: r.jk }));
+        if (customEvents.length === 0 && isAdmin()) await saveNomorLomba(defaultCustomEvents());
+        customEventsSaved = cloneEvents(customEvents);
+
+        const mat = await fetchAll(() => sb.from('matriks_group').select('*').eq('kegiatan_id', kegiatan.id));
+        if (mat.length === 0) {
+            groupEventMatrix = createPresetMatrix();
+            if (isAdmin()) await saveMatrix();
+        } else {
+            groupEventMatrix = createDefaultMatrix();
+            GROUP_LIST.forEach(g => EVENTS.forEach(ev => { groupEventMatrix[g][ev.key] = false; }));
+            mat.forEach(m => {
+                if (!groupEventMatrix[m.group_label]) groupEventMatrix[m.group_label] = {};
+                groupEventMatrix[m.group_label][m.ev_key] = !!m.dibuka;
             });
         }
+
+        const rows = await fetchAll(() => sb.from('peserta').select('*').eq('kegiatan_id', kegiatan.id).order('created_at').order('id'));
+        dataPeserta = rows.map(rowToLocal);
+
+        if (isAdmin()) {
+            const hs = await fetchAll(() => sb.from('hasil')
+                .select('peserta_id,ev_key,waktu_ms,status,ket,peserta!inner(kegiatan_id)')
+                .eq('peserta.kegiatan_id', kegiatan.id).order('peserta_id').order('ev_key'));
+            const byId = new Map(dataPeserta.map(p => [p.id, p]));
+            hs.forEach(h => { const p = byId.get(h.peserta_id); if (p) applyHasilRow(p, h); });
+        }
+
+        const cl = await fetchAll(() => sb.from('club').select('*').order('created_at'));
+        clubs = cl.map(clubRowToLocal);
+        selectedRows.clear();
+        rebuildSnapshots();
     }
 
-    function initLanes() {
-        const savedLanes = localStorage.getItem(STORAGE_LANES);
-        const el = document.getElementById('inpLanes');
-        if (savedLanes && el) el.value = savedLanes;
+    async function saveNomorLomba(list) {
+        const rows = list.map(ev => ({ kegiatan_id: kegiatan.id, nomor: parseInt(ev.title), ev_key: ev.evKey, jk: ev.jk }));
+        if (rows.some(r => !r.nomor)) throw new Error('Ada nomor event yang kosong.');
+        const dupNum = rows.find((r, i) => rows.findIndex(x => x.nomor === r.nomor) !== i);
+        if (dupNum) throw new Error('Nomor ' + dupNum.nomor + ' dipakai lebih dari sekali.');
+        const dupEv = rows.find((r, i) => rows.findIndex(x => x.ev_key === r.ev_key && x.jk === r.jk) !== i);
+        if (dupEv) throw new Error(`${getAutoDescription(dupEv.ev_key, dupEv.jk)} muncul lebih dari sekali.`);
+
+        const { data: old, error: e0 } = await sb.from('nomor_lomba').select('*').eq('kegiatan_id', kegiatan.id);
+        if (e0) throw e0;
+        const { error: e1 } = await sb.from('nomor_lomba').delete().eq('kegiatan_id', kegiatan.id);
+        if (e1) throw e1;
+        const { data: ins, error: e2 } = await sb.from('nomor_lomba').insert(rows).select('*');
+        if (e2) {
+            if (old && old.length) await sb.from('nomor_lomba').insert(old);   // kembalikan susunan lama
+            throw e2;
+        }
+        customEvents = (ins || []).slice().sort((a, b) => a.nomor - b.nomor)
+            .map(r => ({ id: r.id, title: String(r.nomor), evKey: r.ev_key, jk: r.jk }));
+        customEventsSaved = cloneEvents(customEvents);
+    }
+
+    // ---------- SIMPAN (SINKRON) ----------
+    let toastHideTimer = null;
+    function showToast(msg, type, ms) {
+        const t = document.getElementById('saveToast');
+        if (!t) return;
+        t.textContent = msg;
+        t.classList.remove('error', 'pending');
+        if (type) t.classList.add(type);
+        t.classList.add('show');
+        clearTimeout(toastHideTimer);
+        if (ms !== 0) toastHideTimer = setTimeout(() => t.classList.remove('show'), ms || 1500);
+    }
+    function setSyncState(state, msg) {
+        const prev = syncState;
+        syncState = state;
+        if (state === 'error') showToast('⚠️ Belum tersimpan: ' + (msg || '') + ' — mencoba lagi...', 'error', 0);
+        else if (state === 'ok') showToast(prev === 'error' ? '✅ Tersambung lagi, data tersimpan' : '☁️ Tersimpan', null, 1500);
+    }
+
+    function saveData() {
+        if (!kegiatan || !currentUser) return;
+        isDirty = true;
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(syncNow, 600);
+        if (syncState !== 'error') syncState = 'pending';
+    }
+    function saveResultMeta() {
+        resultMeta.titimangsa = val('inpTitimangsa');
+        resultMeta.referee = val('inpReferee');
+        saveData();
+    }
+
+    async function syncNow() {
+        clearTimeout(syncTimer); syncTimer = null;
+        if (!kegiatan || !currentUser) return;
+        if (syncing) { syncAgain = true; return; }
+        syncing = true;
+        let failed = null;
+        try {
+            await syncPeserta();
+            if (isAdmin()) { await syncHasil(); await syncKegiatan(); }
+        } catch (e) { failed = e; }
+        syncing = false;
+        if (failed) {
+            console.error(failed);
+            setSyncState('error', translateAuthError(failed));
+            syncTimer = setTimeout(syncNow, 5000);
+            return;
+        }
+        if (syncAgain) { syncAgain = false; return syncNow(); }
+        isDirty = false;
+        if (rejectedInSync) { rejectedInSync = false; syncState = 'ok'; }
+        else setSyncState('ok');
+    }
+    async function flushSync() {
+        while (syncing) await sleep(150);
+        await syncNow();
+        while (syncing) await sleep(150);
+    }
+
+    async function syncPeserta() {
+        const cur = new Map(dataPeserta.map(p => [p.id, pesertaSer(p)]));
+
+        const deletes = [...snapPeserta.keys()].filter(id => !cur.has(id));
+        for (const ids of chunks(deletes, 100)) {
+            const { data, error } = await sb.from('peserta').delete().in('id', ids).select('id');
+            if (error) throw error;
+            const gone = new Set((data || []).map(r => r.id));
+            ids.forEach(id => snapPeserta.delete(id));
+            const refused = ids.filter(id => !gone.has(id));
+            if (refused.length) await restorePeserta(refused, 'Atlet tidak bisa dihapus (pendaftaran dikunci/ditutup).');
+        }
+
+        const ups = [];
+        cur.forEach((s, id) => { if (snapPeserta.get(id) !== s) ups.push([id, s]); });
+        for (const part of chunks(ups, 200)) {
+            const { error } = await sb.from('peserta').upsert(part.map(([, s]) => JSON.parse(s)));
+            if (!error) { part.forEach(([id, s]) => snapPeserta.set(id, s)); continue; }
+            if (isNetworkError(error)) throw error;
+            // Satu baris ditolak server -> kirim satu per satu supaya baris lain tetap tersimpan
+            for (const [id, s] of part) {
+                const { error: e1 } = await sb.from('peserta').upsert(JSON.parse(s));
+                if (!e1) { snapPeserta.set(id, s); continue; }
+                if (isNetworkError(e1)) throw e1;
+                await restorePeserta([id], e1.message);
+            }
+        }
+    }
+
+    // Kembalikan baris ke versi server setelah ditolak (mis. nomor tidak dibuka untuk group, club dikunci)
+    async function restorePeserta(ids, reason) {
+        const { data, error } = await sb.from('peserta').select('*').in('id', ids);
+        if (error) throw error;
+        const found = new Map((data || []).map(r => [r.id, r]));
+        ids.forEach(id => {
+            const i = idxById(id);
+            const r = found.get(id);
+            if (r) {
+                const fresh = rowToLocal(r);
+                if (i >= 0) {
+                    const old = dataPeserta[i];
+                    fresh.hasil = old.hasil; fresh.statusHasil = old.statusHasil; fresh.ketHasil = old.ketHasil;
+                    dataPeserta[i] = fresh;
+                } else dataPeserta.push(fresh);
+                snapPeserta.set(id, pesertaSer(fresh));
+            } else {
+                if (i >= 0) dataPeserta.splice(i, 1);
+                snapPeserta.delete(id);
+                selectedRows.delete(id);
+            }
+        });
+        rejectedInSync = true;
+        showToast('⚠️ Ditolak server: ' + reason, 'error', 6000);
+        scheduleRerender(true);
+    }
+
+    async function syncHasil() {
+        const cur = collectHasil();
+        const curP = new Set([...cur.keys()].map(k => k.split('|')[0]));
+
+        const byP = new Map();
+        [...snapHasil.keys()].filter(k => !cur.has(k)).forEach(k => {
+            const [pid, ev] = k.split('|');
+            if (!byP.has(pid)) byP.set(pid, []);
+            byP.get(pid).push(ev);
+        });
+        const wholeP = [];
+        for (const [pid, evs] of byP) {
+            if (!curP.has(pid)) { wholeP.push(pid); continue; }
+            const { error } = await sb.from('hasil').delete().eq('peserta_id', pid).in('ev_key', evs);
+            if (error) throw error;
+            evs.forEach(ev => snapHasil.delete(pid + '|' + ev));
+        }
+        for (const ids of chunks(wholeP, 100)) {
+            const { error } = await sb.from('hasil').delete().in('peserta_id', ids);
+            if (error) throw error;
+            ids.forEach(pid => byP.get(pid).forEach(ev => snapHasil.delete(pid + '|' + ev)));
+        }
+
+        const ups = [];
+        cur.forEach((s, k) => { if (snapHasil.get(k) !== s) ups.push([k, s]); });
+        for (const part of chunks(ups, 300)) {
+            const { error } = await sb.from('hasil').upsert(part.map(([, s]) => JSON.parse(s)), { onConflict: 'peserta_id,ev_key' });
+            if (!error) { part.forEach(([k, s]) => snapHasil.set(k, s)); continue; }
+            if (isNetworkError(error)) throw error;
+            for (const [k, s] of part) {
+                const { error: e1 } = await sb.from('hasil').upsert(JSON.parse(s), { onConflict: 'peserta_id,ev_key' });
+                if (e1 && isNetworkError(e1)) throw e1;
+                if (e1) { rejectedInSync = true; showToast('⚠️ Hasil ditolak server: ' + e1.message, 'error', 6000); }
+                snapHasil.set(k, s);   // jangan diulang terus-menerus
+            }
+        }
+    }
+
+    async function syncKegiatan() {
+        const s = collectKegiatan();
+        if (s === snapKegiatan) return;
+        const { error } = await sb.from('kegiatan').update(JSON.parse(s)).eq('id', kegiatan.id);
+        if (error) throw error;
+        snapKegiatan = s;
+        Object.assign(kegiatan, JSON.parse(s));
+    }
+
+    // ---------- REALTIME (perubahan dari perangkat lain) ----------
+    function subscribeRealtime() {
+        if (!kegiatan) return;
+        if (rtChannel) { try { sb.removeChannel(rtChannel); } catch (e) {} }
+        const flt = 'kegiatan_id=eq.' + kegiatan.id;
+        rtChannel = sb.channel('swimapp-' + kegiatan.id)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'peserta', filter: flt }, onPesertaChange)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'peserta', filter: flt }, onPesertaChange)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'peserta' }, onPesertaChange);
+        if (isAdmin()) rtChannel = rtChannel.on('postgres_changes', { event: '*', schema: 'public', table: 'hasil' }, onHasilChange);
+        rtChannel.subscribe();
+    }
+
+    function onPesertaChange(payload) {
+        if (payload.eventType === 'DELETE') {
+            const id = payload.old && payload.old.id;
+            const i = idxById(id);
+            if (i < 0) return;
+            if (pesertaSer(dataPeserta[i]) !== snapPeserta.get(id)) return;   // ada perubahan lokal yang belum tersimpan
+            dataPeserta.splice(i, 1);
+            snapPeserta.delete(id);
+            selectedRows.delete(id);
+            scheduleRerender();
+            return;
+        }
+        const r = payload.new;
+        if (!r || r.kegiatan_id !== kegiatan.id) return;
+        const incoming = rowToLocal(r);
+        const incomingSer = pesertaSer(incoming);
+        const i = idxById(r.id);
+        if (i >= 0) {
+            const local = dataPeserta[i];
+            const localSer = pesertaSer(local);
+            if (localSer !== snapPeserta.get(r.id)) return;   // perubahan lokal menang sampai tersimpan
+            if (localSer === incomingSer) { snapPeserta.set(r.id, incomingSer); return; }
+            const keep = { hasil: local.hasil, statusHasil: local.statusHasil, ketHasil: local.ketHasil };
+            Object.assign(local, incoming, keep);
+        } else {
+            dataPeserta.push(incoming);
+        }
+        snapPeserta.set(r.id, incomingSer);
+        scheduleRerender();
+    }
+
+    function onHasilChange(payload) {
+        const r = payload.eventType === 'DELETE' ? payload.old : payload.new;
+        if (!r || !r.peserta_id) return;
+        const i = idxById(r.peserta_id);
+        if (i < 0) return;
+        const p = dataPeserta[i];
+        const k = r.peserta_id + '|' + r.ev_key;
+        if ((hasilSer(p, r.ev_key) || null) !== (snapHasil.get(k) || null)) return;
+        if (payload.eventType === 'DELETE') {
+            applyHasilRow(p, { ev_key: r.ev_key, waktu_ms: null, status: null, ket: '' });
+            snapHasil.delete(k);
+        } else {
+            applyHasilRow(p, r);
+            const s = hasilSer(p, r.ev_key);
+            if (s) snapHasil.set(k, s); else snapHasil.delete(k);
+        }
+        scheduleRerender();
+    }
+
+    let rerenderTimer = null, rerenderPending = false;
+    function scheduleRerender(now) {
+        clearTimeout(rerenderTimer);
+        rerenderTimer = setTimeout(doRerender, now ? 0 : 300);
+    }
+    function doRerender() {
+        const active = document.querySelector('.sheet-tab.active')?.dataset.sheet;
+        if (!active || active === 'timer') return;   // jangan ganggu operator timer
+        const view = document.getElementById('view-' + active);
+        const ae = document.activeElement;
+        if (ae && ['INPUT', 'SELECT', 'TEXTAREA'].includes(ae.tagName) && view && view.contains(ae)) { rerenderPending = true; return; }
+        rerenderPending = false;
+        if (active === 'form') renderTable();
+        else if (active === 'bukuacara') renderBukuAcara();
+        else if (active === 'result') renderResult();
+        else if (active === 'sertifikat') renderSertifikat();
+        else if (active === 'bestswimmer') renderBestSwimmer();
+        else if (active === 'dashboard') renderClubAccounts();
+    }
+    document.addEventListener('focusout', () => { if (rerenderPending) setTimeout(doRerender, 80); });
+
+    // ---------- SETELAH LOGIN ----------
+    async function bootAfterLogin(user) {
+        if (!user) return;
+        setBootStatus('⏳ Memuat data dari server...');
+        try {
+            const { data: adm, error: eA } = await sb.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
+            if (eA) throw eA;
+            if (adm) {
+                currentUser = { role: 'admin', id: user.id, email: user.email };
+            } else {
+                const { data: c, error: eC } = await sb.from('club').select('*').eq('id', user.id).maybeSingle();
+                if (eC) throw eC;
+                if (!c) {
+                    await sb.auth.signOut();
+                    currentUser = null;
+                    showLoginOverlay();
+                    showLoginError('❌ Akun ini belum terdaftar sebagai club maupun admin. Hubungi panitia.');
+                    return;
+                }
+                currentUser = { role: 'club', id: user.id, clubId: c.id, namaClub: c.nama_club, official: c.official, email: user.email };
+            }
+            await loadAll();
+            hideLoginOverlay();
+            applyRoleUI();
+            subscribeRealtime();
+        } catch (e) {
+            console.error(e);
+            currentUser = null;
+            showLoginOverlay();
+            showLoginError('❌ Gagal memuat data: ' + translateAuthError(e));
+        } finally {
+            setBootStatus('');
+        }
     }
 
     // ============================================================
@@ -1898,20 +2269,17 @@
     // ============================================================
     // BULK SELECT
     // ============================================================
+    // selectedRows berisi ID peserta (bukan index), supaya aman saat data berubah dari perangkat lain
     window.toggleSelectAll = function(chk) {
-        if (chk.checked) {
-            currentFilteredData.forEach(p => {
-                const orig = dataPeserta.indexOf(p);
-                if (orig >= 0) selectedRows.add(orig);
-            });
-        } else { selectedRows.clear(); }
+        if (chk.checked) currentFilteredData.forEach(p => selectedRows.add(p.id));
+        else selectedRows.clear();
         renderTable();
     };
 
     window.toggleRowSelect = function(chk) {
-        const idx = parseInt(chk.dataset.rowidx);
-        if (chk.checked) selectedRows.add(idx);
-        else selectedRows.delete(idx);
+        const id = chk.dataset.rowidx;
+        if (chk.checked) selectedRows.add(id);
+        else selectedRows.delete(id);
         updateBulkButtons();
     };
 
@@ -1932,44 +2300,39 @@
         if (chkAll) chkAll.checked = count > 0 && count === currentFilteredData.length;
     }
 
+    function selectedPeserta() { return dataPeserta.filter(p => selectedRows.has(p.id)); }
+
     window.deleteSelectedRows = function() {
-        if (selectedRows.size === 0) return;
+        const chosen = selectedPeserta();
+        if (chosen.length === 0) return;
         if (currentUser?.role === 'club') {
-            const invalid = [...selectedRows].some(idx => dataPeserta[idx]?.ownerClubId !== currentUser.clubId);
-            if (invalid) { alert('❌ Anda hanya bisa menghapus atlet milik club Anda sendiri.'); return; }
+            if (chosen.some(p => p.ownerClubId !== currentUser.clubId)) { alert('❌ Anda hanya bisa menghapus atlet milik club Anda sendiri.'); return; }
+            if (checkClubLocked()) { alert('🔒 Pendaftaran sudah dikunci/ditutup oleh panitia.'); return; }
         }
-        const count = selectedRows.size;
-        if (!confirm(`Hapus ${count} peserta (seluruh baris)?`)) return;
-        const sortedIndices = [...selectedRows].sort((a, b) => b - a);
-        sortedIndices.forEach(idx => { if (idx >= 0 && idx < dataPeserta.length) dataPeserta.splice(idx, 1); });
+        if (!confirm(`Hapus ${chosen.length} peserta (seluruh baris)?`)) return;
+        dataPeserta = dataPeserta.filter(p => !selectedRows.has(p.id));
         selectedRows.clear();
         isDirty = true;
         renderTable();
         saveData();
-        alert(`✅ ${count} peserta berhasil dihapus.`);
+        showToast(`🗑️ ${chosen.length} peserta dihapus`, null, 2000);
     };
 
     window.hapusNomorTerpilih = function() {
-        if (selectedRows.size === 0) return;
+        const chosen = selectedPeserta();
+        if (chosen.length === 0) return;
         if (currentUser?.role === 'club') {
-            const invalid = [...selectedRows].some(idx => dataPeserta[idx]?.ownerClubId !== currentUser.clubId);
-            if (invalid) { alert('❌ Anda hanya bisa mengubah atlet milik club Anda sendiri.'); return; }
+            if (chosen.some(p => p.ownerClubId !== currentUser.clubId)) { alert('❌ Anda hanya bisa mengubah atlet milik club Anda sendiri.'); return; }
+            if (checkClubLocked()) { alert('🔒 Pendaftaran sudah dikunci/ditutup oleh panitia.'); return; }
         }
-        const count = selectedRows.size;
-        if (!confirm(`Hapus semua NOMOR dari ${count} peserta terpilih?`)) return;
+        if (!confirm(`Hapus semua NOMOR dari ${chosen.length} peserta terpilih?`)) return;
         let totalUncheck = 0;
-        selectedRows.forEach(idx => {
-            if (idx >= 0 && idx < dataPeserta.length) {
-                EVENTS.forEach(ev => {
-                    if (dataPeserta[idx][ev.key]) { dataPeserta[idx][ev.key] = false; totalUncheck++; }
-                });
-            }
-        });
+        chosen.forEach(p => EVENTS.forEach(ev => { if (p[ev.key]) { p[ev.key] = false; totalUncheck++; } }));
         selectedRows.clear();
         isDirty = true;
         renderTable();
         saveData();
-        alert(`✅ ${totalUncheck} nomor dihapus.`);
+        showToast(`✖️ ${totalUncheck} nomor dihapus`, null, 2000);
     };
 
     // ============================================================
@@ -1985,7 +2348,7 @@
     function checkClubLocked() {
         if (currentUser?.role !== 'club') return false;
         const club = clubs.find(c => c.id === currentUser.clubId);
-        return !!club?.locked;
+        return !!club?.locked || !!(kegiatan && !kegiatan.pendaftaran_dibuka);
     }
 
     function renderTable() {
@@ -1993,9 +2356,7 @@
         const tfoot = document.getElementById('tbodyFoot');
         if (!tbody) return;
 
-        [...selectedRows].forEach(idx => {
-            if (idx < 0 || idx >= dataPeserta.length) selectedRows.delete(idx);
-        });
+        [...selectedRows].forEach(id => { if (idxById(id) < 0) selectedRows.delete(id); });
 
         const baseData = getDataForCurrentUser();
 
@@ -2053,6 +2414,9 @@
         const locked = checkClubLocked();
         const lockBanner = document.getElementById('lockBanner');
         if (lockBanner) lockBanner.classList.toggle('show', locked);
+        const lockText = document.getElementById('lockBannerText');
+        if (lockText && locked) lockText.textContent = clubs.find(c => c.id === currentUser?.clubId)?.locked
+            ? 'Pendaftaran club Anda sudah dikunci oleh panitia.' : 'Pendaftaran sudah ditutup oleh panitia.';
         document.querySelectorAll('#view-form input, #view-form select, #view-form button.del-btn').forEach(el => {
             if (locked && currentUser?.role === 'club') el.disabled = true;
         });
@@ -2066,7 +2430,7 @@
         } else {
             let html = '';
             filtered.forEach((p, idx) => {
-                const originalIdx = dataPeserta.indexOf(p);
+                const originalIdx = p.id;
                 const isSelected = selectedRows.has(originalIdx);
                 const isOwnedByOther = currentUser?.role === 'club' && p.ownerClubId !== currentUser.clubId;
                 const tahunValid = hasValidTahun(p);
@@ -2132,6 +2496,7 @@
         filterState = {};
         const clubObj = currentUser?.role === 'club' ? clubs.find(c => c.id === currentUser.clubId) : null;
         const newP = {
+            id: newId(),
             nama: '', jk: '', klub: clubObj ? clubObj.namaClub : '', tahun: '', seed: '',
             kbgb25: false, kbgd25: false, fins25: false,
             gb25: false, gb50: false, gb100: false,
@@ -2178,9 +2543,9 @@
     document.getElementById('tbody').addEventListener('input', function(e) {
         const target = e.target;
         if (target.tagName === 'INPUT' && (target.type === 'text' || target.type === 'number') && !target.readOnly && target.dataset.idx) {
-            const idx = parseInt(target.dataset.idx);
+            const idx = idxById(target.dataset.idx);
             const field = target.dataset.field;
-            if (isNaN(idx) || !field) return;
+            if (idx < 0 || !field) return;
             if (currentUser?.role === 'club' && dataPeserta[idx]?.ownerClubId !== currentUser.clubId) return;
             dataPeserta[idx][field] = target.value;
             isDirty = true;
@@ -2192,6 +2557,20 @@
                     const agData = hitungGrup(target.value);
                     const nama = dataPeserta[idx].nama || '';
                     if (agCell) agCell.textContent = agData ? agData.kode : (nama ? '⚠️ -' : '-');
+                    // Perbarui checkbox nomor sesuai group baru (sebelumnya tetap disabled sampai halaman di-render ulang)
+                    const pRow = dataPeserta[idx];
+                    row.querySelectorAll('td.cb-cell input[type=checkbox]').forEach(cb => {
+                        const ev = cb.dataset.field;
+                        const allowed = isEventAllowedForPeserta(pRow, ev);
+                        cb.disabled = !allowed;
+                        const lbl = cb.closest('label');
+                        if (lbl) lbl.style.cssText = allowed ? '' : 'opacity:0.35; cursor:not-allowed; background:#f1f5f9;';
+                        cb.closest('td').title = allowed ? '' : 'Nomor ini tidak dibuka untuk group atlet';
+                        if (!allowed && pRow[ev]) { pRow[ev] = false; cb.checked = false; }
+                    });
+                    const biayaRow = row.querySelector('.biaya-auto');
+                    if (biayaRow) biayaRow.value = formatRupiah(hitungBiayaRaw(pRow));
+                    updateDashboard();
                     const valid = hasValidTahun(dataPeserta[idx]);
                     if (nama && !valid) {
                         target.style.border = '2px solid #dc2626';
@@ -2208,8 +2587,8 @@
     document.getElementById('tbody').addEventListener('change', function(e) {
         const target = e.target;
         if (target.type === 'checkbox' && target.dataset.field) {
-            const idx = parseInt(target.dataset.idx);
-            if (isNaN(idx)) return;
+            const idx = idxById(target.dataset.idx);
+            if (idx < 0) return;
             if (currentUser?.role === 'club' && dataPeserta[idx]?.ownerClubId !== currentUser.clubId) return;
             if (target.checked && !isEventAllowedForPeserta(dataPeserta[idx], target.dataset.field)) {
                 target.checked = false;
@@ -2227,8 +2606,8 @@
             saveData();
         }
         else if (target.tagName === 'SELECT' && target.dataset.idx) {
-            const idx = parseInt(target.dataset.idx);
-            if (isNaN(idx)) return;
+            const idx = idxById(target.dataset.idx);
+            if (idx < 0) return;
             if (currentUser?.role === 'club' && dataPeserta[idx]?.ownerClubId !== currentUser.clubId) return;
             dataPeserta[idx][target.dataset.field] = target.value;
             isDirty = true;
@@ -2238,8 +2617,8 @@
 
     document.getElementById('tbody').addEventListener('click', function(e) {
         if (e.target.classList.contains('del-btn')) {
-            const idx = parseInt(e.target.dataset.del);
-            if (isNaN(idx)) return;
+            const idx = idxById(e.target.dataset.del);
+            if (idx < 0) return;
             if (currentUser?.role === 'club' && dataPeserta[idx]?.ownerClubId !== currentUser.clubId) { alert('❌ Bukan atlet Anda.'); return; }
             if (confirm('Hapus peserta ini?')) {
                 dataPeserta.splice(idx, 1);
@@ -2296,9 +2675,9 @@
         const jamMulaiEl = document.getElementById('inpJamMulai');
         const jamMulaiGlobal = jamMulaiEl ? jamMulaiEl.value : '08:00';
 
+        // Jam heat dihitung dari SELURUH acara; filter hanya menentukan heat mana yang ditampilkan.
+        // (Sebelumnya jam dihitung ulang dari jam mulai saat difilter, jadi jadwal per group salah.)
         let validData = dataPeserta.filter(p => p.nama && p.nama.trim() !== '' && hasValidTahun(p));
-        if (selectedGroup !== 'ALL') validData = validData.filter(p => getGroupLabel(p) === selectedGroup);
-        if (selectedGender !== 'ALL') validData = validData.filter(p => p.jk === selectedGender);
 
         const skipped = dataPeserta.filter(p => p.nama && p.nama.trim() !== '' && !hasValidTahun(p)).length;
 
@@ -2327,7 +2706,8 @@
         sortedEvents.forEach(evConfig => {
             let participants = validData.filter(p => p[evConfig.evKey] && p.jk === evConfig.jk);
             if (participants.length === 0) return;
-            hasData = true;
+            const showEvent = selectedGender === 'ALL' || evConfig.jk === selectedGender;
+            let titleShown = false;
 
             const autoDesc = getAutoDescription(evConfig.evKey, evConfig.jk);
             const eventName = `${evConfig.title} - ${autoDesc}`;
@@ -2339,7 +2719,13 @@
 
             heats.forEach((chunk, hIdx) => {
                 const heatNum = hIdx + 1;
+                const jamMulaiStr = formatJamMulai(jamMulaiGlobal, globalTotalMenit);
+                globalTotalMenit += estimasiMenitPerHeat;
+                globalTotalHeat++;
+                if (!showEvent) return;
+                if (selectedGroup !== 'ALL' && (chunk.__groupLabel || '') !== selectedGroup) return;
                 if (selectedHeat !== 'ALL' && parseInt(selectedHeat) !== heatNum) return;
+                hasData = true;
 
                 const laneOrder = getLaneOrder(lanesCount);
                 let assignMap = {};
@@ -2347,15 +2733,12 @@
 
                 const groupLabel = chunk.__groupLabel || '';
                 
-                // Hitung Jam Akumulatif
-                const jamMulaiStr = formatJamMulai(jamMulaiGlobal, globalTotalMenit);
-                globalTotalMenit += estimasiMenitPerHeat;
-                globalTotalHeat++;
 
                 // Build Header Baru (Tanpa Kotak & Tanpa Group di Header)
                 const jamHtml = showJamHeat ? `<span class="heat-text-jam">${jamMulaiStr}</span>` : '';
                 
-                const isFirstHeatForEvent = (heatNum === 1 || selectedHeat !== 'ALL');
+                const isFirstHeatForEvent = !titleShown;
+                titleShown = true;
                 const eventTitleHtml = isFirstHeatForEvent ? `<div class="heat-event-title">${eventName.toUpperCase()}</div>` : '';
 
                 let blockHtml = `<div class="event-block">
@@ -2396,8 +2779,8 @@
                         let yob = p.tahun ? String(p.tahun).trim() : '';
                         let age = yob ? (COMP_YEAR - parseInt(yob)) : '';
                         let ag = getGroupLabel(p);
-                        let hasilVal = p.hasil && p.hasil[evConfig.evKey] ? formatHasil(p.hasil[evConfig.evKey]) : '';
-                        let originalIdx = dataPeserta.indexOf(p);
+                        let hasilVal = p.hasil && p.hasil[evConfig.evKey] != null ? formatHasil(p.hasil[evConfig.evKey]) : '';
+                        let originalIdx = p.id;
                         let statusVal = p.statusHasil && p.statusHasil[evConfig.evKey] ? p.statusHasil[evConfig.evKey] : '';
                         let seedVal = p.seed || 'NT';
                         blockHtml += `<tr>
@@ -2454,26 +2837,39 @@
         }
     }
 
-    document.getElementById('bukuAcaraContainer').addEventListener('input', function(e) {
-        if (e.target.classList.contains('hasil-input')) {
-            const idx = parseInt(e.target.dataset.idx);
-            const evKey = e.target.dataset.ev;
-            let rawVal = e.target.value.replace(/\D/g, '').slice(0, 7);
-            if (!dataPeserta[idx].hasil) dataPeserta[idx].hasil = {};
-            dataPeserta[idx].hasil[evKey] = rawVal;
-            e.target.value = formatHasil(rawVal);
-            isDirty = true;
-            saveData();
-        }
+    // Saat mengetik: hanya format tampilan. Saat selesai (pindah kolom / Enter): simpan sebagai milidetik.
+    const bukuAcaraEl = document.getElementById('bukuAcaraContainer');
+    bukuAcaraEl.addEventListener('input', function(e) {
+        if (!e.target.classList.contains('hasil-input')) return;
+        e.target.value = formatDigits(e.target.value);
+    });
+    bukuAcaraEl.addEventListener('change', function(e) {
+        if (!e.target.classList.contains('hasil-input')) return;
+        const idx = idxById(e.target.dataset.idx);
+        if (idx < 0) return;
+        const p = dataPeserta[idx];
+        const evKey = e.target.dataset.ev;
+        const raw = e.target.value.replace(/\D/g, '').slice(0, 7);
+        if (!p.hasil) p.hasil = {};
+        if (raw.length === 0) delete p.hasil[evKey];
+        else if (raw.length < 6) {
+            showToast('⚠️ Ketik minimal 6 digit: menit-detik-milidetik, mis. 003512 = 00:35.12', 'error', 4000);
+            e.target.value = p.hasil[evKey] != null ? formatHasil(p.hasil[evKey]) : '';
+            return;
+        } else p.hasil[evKey] = digitsToMs(raw);
+        e.target.value = p.hasil[evKey] != null ? formatHasil(p.hasil[evKey]) : '';
+        isDirty = true;
+        saveData();
     });
 
     window.updateStatusHasil = function(el) {
-        const idx = parseInt(el.dataset.idx);
+        const idx = idxById(el.dataset.idx);
+        if (idx < 0) return;
         const evKey = el.dataset.ev;
-        const val = el.value;
+        const v = el.value;
         if (!dataPeserta[idx].statusHasil) dataPeserta[idx].statusHasil = {};
-        dataPeserta[idx].statusHasil[evKey] = val;
-        el.className = 'status-select ' + (val ? val.toLowerCase() : '');
+        if (v) dataPeserta[idx].statusHasil[evKey] = v; else delete dataPeserta[idx].statusHasil[evKey];
+        el.className = 'status-select ' + (v ? v.toLowerCase() : '');
         isDirty = true;
         saveData();
     };
@@ -2499,7 +2895,9 @@
             const autoDesc = getAutoDescription(ev.evKey, ev.jk);
             html += `<option value="${ev.evKey}_${ev.jk}">${ev.title} - ${autoDesc}</option>`;
         });
+        const prev = sel.value;
         sel.innerHTML = html;
+        if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
     };
 
     function renderResult() {
@@ -2523,7 +2921,7 @@
 
             let participants = [];
             dataPeserta.forEach(p => {
-                const hasTime = p.hasil && p.hasil[evConfig.evKey] && p.hasil[evConfig.evKey].length >= 6;
+                const hasTime = p.hasil && p.hasil[evConfig.evKey] != null;
                 const hasStatus = p.statusHasil && p.statusHasil[evConfig.evKey];
                 if (p[evConfig.evKey] && p.jk === evConfig.jk && (hasTime || hasStatus)) {
                     if (!hasValidTahun(p)) return;
@@ -2582,9 +2980,9 @@
                         </tr></thead><tbody>`;
 
                 groupParticipants.forEach((p, idx) => {
-                    const originalIdx = dataPeserta.indexOf(p);
+                    const originalIdx = p.id;
                     const ketVal = p.ketHasil && p.ketHasil[evConfig.evKey] ? p.ketHasil[evConfig.evKey] : '';
-                    const timeStr = p.hasil && p.hasil[evConfig.evKey] ? formatHasil(p.hasil[evConfig.evKey]) : '';
+                    const timeStr = p.hasil && p.hasil[evConfig.evKey] != null ? formatHasil(p.hasil[evConfig.evKey]) : '';
                     const statusVal = p.statusHasil && p.statusHasil[evConfig.evKey] ? p.statusHasil[evConfig.evKey] : '';
                     const yob = p.tahun || '';
                     const gLabel = getGroupLabel(p);
@@ -2637,11 +3035,12 @@
 
     document.getElementById('resultContainer').addEventListener('input', function(e) {
         if (e.target.classList.contains('ket-result-input')) {
-            const idx = parseInt(e.target.dataset.idx);
+            const idx = idxById(e.target.dataset.idx);
+            if (idx < 0) return;
             const evKey = e.target.dataset.ev;
-            const val = e.target.value;
+            const v = e.target.value;
             if (!dataPeserta[idx].ketHasil) dataPeserta[idx].ketHasil = {};
-            dataPeserta[idx].ketHasil[evKey] = val;
+            if (v) dataPeserta[idx].ketHasil[evKey] = v; else delete dataPeserta[idx].ketHasil[evKey];
             isDirty = true;
             saveData();
         }
@@ -2694,7 +3093,7 @@
             } else {
                 eventDiikuti.forEach((ev, i) => {
                     let waktu = '-';
-                    if (p.hasil && p.hasil[ev.evKey] && String(p.hasil[ev.evKey]).length >= 6) waktu = formatHasil(p.hasil[ev.evKey]);
+                    if (p.hasil && p.hasil[ev.evKey] != null) waktu = formatHasil(p.hasil[ev.evKey]);
                     let ket = '';
                     if (p.statusHasil && p.statusHasil[ev.evKey]) ket = p.statusHasil[ev.evKey];
                     else if (p.ketHasil && p.ketHasil[ev.evKey]) ket = p.ketHasil[ev.evKey];
@@ -2776,9 +3175,9 @@
                 if (!hasValidTahun(p)) return;
                 const status = p.statusHasil && p.statusHasil[evConfig.evKey] ? p.statusHasil[evConfig.evKey] : '';
                 if (status) return;
-                const hasilRaw = p.hasil && p.hasil[evConfig.evKey] ? String(p.hasil[evConfig.evKey]) : '';
-                if (hasilRaw.length < 6) return;
-                participants.push({ p, timeMs: parseInt(hasilRaw) || 999999 });
+                const w = p.hasil ? p.hasil[evConfig.evKey] : null;
+                if (w === null || w === undefined || isNaN(Number(w))) return;
+                participants.push({ p, timeMs: Number(w) });
             });
             if (participants.length === 0) return;
             participants.sort((a, b) => a.timeMs - b.timeMs);
@@ -2923,9 +3322,7 @@
         container.innerHTML = html;
     };
 
-    document.getElementById('bsPointScheme').addEventListener('change', function() {
-        localStorage.setItem(STORAGE_MVP_SCHEME, this.value);
-    });
+    document.getElementById('bsPointScheme').addEventListener('change', function() { saveData(); });
 
     // ============================================================
     // TIMER OPERATOR
@@ -2995,14 +3392,14 @@
         for (let lane = 1; lane <= lanesCount; lane++) {
             let p = assignMap[lane];
             if (p) {
-                const originalIdx = dataPeserta.indexOf(p);
-                const isRecorded = p.hasil && p.hasil[evConfig.evKey] && p.hasil[evConfig.evKey].length >= 6;
+                const originalIdx = p.id;
+                const isRecorded = p.hasil && p.hasil[evConfig.evKey] != null;
                 html += `
                     <div class="lane-card ${isRecorded ? 'recorded' : ''}" id="laneCard_${lane}">
                         <div class="lane-num">Lintasan ${lane}</div>
                         <div class="lane-name" title="${esc(p.nama)}">${esc(p.nama)}</div>
-                        <div class="lane-time" id="laneTime_${lane}">${isRecorded ? formatTimerWaktu(parseInt(p.hasil[evConfig.evKey])) : '00:00.000'}</div>
-                        <button type="button" id="laneBtn_${lane}" onclick="recordLaneTime(${lane}, ${originalIdx}, '${evConfig.evKey}')" ${isRecorded ? 'disabled' : ''}>
+                        <div class="lane-time" id="laneTime_${lane}">${isRecorded ? formatTimerWaktu(Number(p.hasil[evConfig.evKey])) : '00:00.000'}</div>
+                        <button type="button" id="laneBtn_${lane}" onclick="recordLaneTime(${lane}, '${originalIdx}', '${evConfig.evKey}')" ${isRecorded ? 'disabled' : ''}>
                             ${isRecorded ? '✅ Tercatat' : 'Catat (Spasi)'}
                         </button>
                         <div class="key-hint" style="font-size:10px; color:#64748b; margin-top:4px;">Tekan [${lane}]</div>
@@ -3053,16 +3450,18 @@
         }
     };
 
-    window.recordLaneTime = function(lane, pIdx, evKey) {
+    window.recordLaneTime = function(lane, pesertaId, evKey) {
         if (!timerRunning && timerElapsed === 0) {
             alert('Timer belum berjalan! Klik START terlebih dahulu.');
             return;
         }
-        const clickMs = Math.round(performance.now() - timerStartTime);
+        const pIdx = idxById(pesertaId);
+        if (pIdx < 0) { alert('Atlet ini sudah tidak ada di data (mungkin baru dihapus).'); return; }
+        // Kalau timer sudah di-STOP, pakai waktu saat berhenti (sebelumnya waktu terus bertambah)
+        const clickMs = Math.round(timerRunning ? performance.now() - timerStartTime : timerElapsed);
         const timeStr = formatTimerWaktu(clickMs);
-        const raw7 = timeStr.replace(/\D/g, '').substring(0, 7);
         if (!dataPeserta[pIdx].hasil) dataPeserta[pIdx].hasil = {};
-        dataPeserta[pIdx].hasil[evKey] = raw7;
+        dataPeserta[pIdx].hasil[evKey] = clickMs;
         isDirty = true;
         saveData();
         const card = document.getElementById(`laneCard_${lane}`);
@@ -3115,6 +3514,7 @@
     // EVENT CONFIG MODAL
     // ============================================================
     window.openEventConfigModal = function() {
+        customEvents = cloneEvents(customEventsSaved);   // mulai dari versi yang tersimpan
         if (customEvents.length > 0) {
             const firstTitle = String(customEvents[0].title).replace(/\D/g, '');
             document.getElementById('inpStartEventNum').value = firstTitle || '101';
@@ -3122,16 +3522,19 @@
         renderEventConfig();
         document.getElementById('eventConfigModal').classList.add('show');
     };
-    window.closeEventConfigModal = function() { document.getElementById('eventConfigModal').classList.remove('show'); };
+    // Batal = buang perubahan yang belum disimpan
+    window.closeEventConfigModal = function() {
+        document.getElementById('eventConfigModal').classList.remove('show');
+        customEvents = cloneEvents(customEventsSaved);
+    };
 
     window.renderEventConfig = function() {
         const container = document.getElementById('eventConfigList');
         if (!container) return;
-        container.innerHTML = '';
-        customEvents.forEach((ev, index) => {
-            let numTitle = String(ev.title).replace(/\D/g, '');
+        container.innerHTML = customEvents.map((ev, index) => {
+            const numTitle = String(ev.title).replace(/\D/g, '');
             const autoDesc = getAutoDescription(ev.evKey, ev.jk);
-            container.innerHTML += `
+            return `
                 <div class="config-row">
                     <div class="row-top">
                         <input type="number" value="${numTitle}" onchange="updateEventNumber(${index}, this.value)" placeholder="Contoh: 101" title="Nomor Event">
@@ -3148,23 +3551,23 @@
                     </div>
                     <div class="auto-desc">🔄 Deskripsi Otomatis: ${autoDesc}</div>
                 </div>`;
-        });
+        }).join('');
     };
 
-    window.updateEventNumber = function(index, val) {
-        let num = parseInt(val) || 101;
+    window.updateEventNumber = function(index, v) {
+        let num = parseInt(v) || 101;
         if (customEvents[index].jk === 'L' && num % 2 === 0) num++;
         if (customEvents[index].jk === 'P' && num % 2 !== 0) num++;
         customEvents[index].title = num.toString();
         renderEventConfig();
     };
 
-    window.updateEventField = function(index, field, val) {
-        customEvents[index][field] = val;
+    window.updateEventField = function(index, field, v) {
+        customEvents[index][field] = v;
         let num = parseInt(customEvents[index].title) || 101;
         if (field === 'jk') {
-            if (val === 'L' && num % 2 === 0) num++;
-            if (val === 'P' && num % 2 !== 0) num++;
+            if (v === 'L' && num % 2 === 0) num++;
+            if (v === 'P' && num % 2 !== 0) num++;
             customEvents[index].title = num.toString();
         }
         renderEventConfig();
@@ -3182,7 +3585,7 @@
         if (nextJk === 'L' && nextNum % 2 === 0) nextNum++;
         if (nextJk === 'P' && nextNum % 2 !== 0) nextNum++;
         customEvents.push({
-            id: Date.now() + Math.random(),
+            id: 'baru-' + newId(),
             title: `${nextNum}`,
             evKey: customEvents.length > 0 ? customEvents[customEvents.length - 1].evKey : EVENTS[0].key,
             jk: nextJk
@@ -3207,14 +3610,20 @@
         renderEventConfig();
     };
 
-    window.saveEventConfig = function() {
-        customEvents = customEvents.map(ev => ({ ...ev, title: String(ev.title).trim() }));
-        localStorage.setItem(STORAGE_EVENTS, JSON.stringify(customEvents));
-        isDirty = true;
-        closeEventConfigModal();
-        renderBukuAcara(); populateResultEvents(); renderResult(); renderSertifikat(); renderBestSwimmer();
-        const toast = document.getElementById('saveToast');
-        if (toast) { toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1500); }
+    window.saveEventConfig = async function() {
+        const btn = document.querySelector('#eventConfigModal .modal-actions .save');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan...'; }
+        try {
+            await saveNomorLomba(customEvents.map(ev => ({ ...ev, title: String(ev.title).trim() })));
+            closeEventConfigModal();
+            renderBukuAcara(); populateResultEvents(); renderResult(); renderSertifikat(); renderBestSwimmer();
+            showToast('☁️ Nomor lomba tersimpan', null, 1500);
+        } catch (e) {
+            console.error(e);
+            alert('❌ Gagal menyimpan nomor lomba: ' + (e.message || e));
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan & Terapkan'; }
+        }
     };
 
     // ============================================================
@@ -3376,7 +3785,7 @@
             currentFilteredData.forEach(p => grandTotal += hitungBiayaRaw(p));
             wsData.push([globalNamaKegiatan, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
             wsData.push(['', '', '', '', '', '', '', '', 'Harga/Nomor:', globalHarga, '', '', '', '', '', '', '', '']);
-            wsData.push(['', '', '', '', '', '', '', '', 'Kickboard', 'Kickboard', 'Fins', 'Gbebas', 'Gbebas', 'Gbebas', 'Gdada', 'Gdada', 'Gdada', 'Gpunggung', 'Gpunggung', 'Gpunggung', 'Gkupu', 'Gkupu', 'Gkupu', 'IM', 'IM', 'Jumlah Total :', grandTotal, '', '']);
+            wsData.push(['', '', '', '', '', '', '', 'Kickboard', 'Kickboard', 'Fins', 'Gbebas', 'Gbebas', 'Gbebas', 'Gdada', 'Gdada', 'Gdada', 'Gpunggung', 'Gpunggung', 'Gpunggung', 'Gkupu', 'Gkupu', 'Gkupu', 'IM', 'IM', 'Jumlah Total :', grandTotal, '', '']);
             wsData.push(['NO', 'NAMA LENGKAP', 'L/P', 'ASAL SEKOLAH / KLUB', 'THN LAHIR', 'GROUP', 'SEED TIME',
                 'KB GB 25M', 'KB GD 25M', 'FINS 25M', 'GB 25M', 'GB 50M', 'GB 100M',
                 'GD 25M', 'GD 50M', 'GD 100M', 'GPG 25M', 'GPG 50M', 'GPG 100M',
@@ -3420,7 +3829,7 @@
         let wsData = []; let hasData = false;
         const sortedEvents = [...customEvents].sort((a, b) => parseInt(a.title) - parseInt(b.title));
         sortedEvents.forEach(evConfig => {
-            let participants = dataPeserta.filter(p => p[evConfig.evKey] && p.jk === evConfig.jk && p.hasil && p.hasil[evConfig.evKey] && p.hasil[evConfig.evKey].length >= 6 && hasValidTahun(p));
+            let participants = dataPeserta.filter(p => p[evConfig.evKey] && p.jk === evConfig.jk && p.hasil && p.hasil[evConfig.evKey] != null && hasValidTahun(p));
             if (participants.length === 0) return;
             hasData = true;
             const byGroup = {};
@@ -3433,7 +3842,7 @@
             const autoDesc = getAutoDescription(evConfig.evKey, evConfig.jk);
             const fullTitle = `${evConfig.title} - ${autoDesc}`;
             sortedGroups.forEach(groupLabel => {
-                const groupList = byGroup[groupLabel].sort((a, b) => parseInt(a.hasil[evConfig.evKey]) - parseInt(b.hasil[evConfig.evKey]));
+                const groupList = byGroup[groupLabel].sort((a, b) => Number(a.hasil[evConfig.evKey]) - Number(b.hasil[evConfig.evKey]));
                 wsData.push([`${fullTitle.toUpperCase()} — ${groupLabel}`]);
                 wsData.push(['NO', 'NAMA ATLET', 'KLUB / SEKOLAH', 'GROUP', 'CATATAN WAKTU', 'KETERANGAN']);
                 groupList.forEach((p, idx) => {
@@ -3514,7 +3923,7 @@
                         let yob = p.tahun || '';
                         let age = yob ? (COMP_YEAR - parseInt(yob)) : '';
                         let ag = getGroupLabel(p);
-                        let hasilVal = p.hasil && p.hasil[evConfig.evKey] ? formatHasil(p.hasil[evConfig.evKey]) : '';
+                        let hasilVal = p.hasil && p.hasil[evConfig.evKey] != null ? formatHasil(p.hasil[evConfig.evKey]) : '';
                         let seedVal = p.seed || 'NT';
                         wsData.push([lane, p.nama.toUpperCase(), ag, `${yob} ${age!==''?'('+age+')':''}`, ag, (p.klub||'').toUpperCase(), seedVal, hasilVal]);
                     } else { wsData.push([lane, '<Empty>', '', '', '', '', '', '']); }
@@ -3574,6 +3983,13 @@
                     }
                     return -1;
                 };
+                // Kolom nomor lomba dicocokkan PERSIS (spasi diabaikan) pada baris judul,
+                // supaya "GB 25M" tidak terbaca dari kolom "KB GB 25M" (bug versi lama).
+                const normH = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const findEventCol = (ev) => {
+                    const wanted = [ev.header, ev.header.replace(/M$/, ''), ev.key].map(normH);
+                    return headerRow.findIndex(h => wanted.includes(normH(h)));
+                };
 
                 const colMap = {
                     nama: findCol(['NAMA LENGKAP']),
@@ -3581,33 +3997,17 @@
                     klub: findCol(['ASAL SEKOLAH', 'KLUB', 'SEKOLAH']),
                     tahun: findCol(['TAHUN LAHIR', 'THN LAHIR', 'YOB']),
                     seed: findCol(['SEED TIME', 'SEEDTIME', 'SEED']),
-                    kbgb25: findCol(['KB GB 25M', 'KBGB25']),
-                    kbgd25: findCol(['KB GD 25M', 'KBGD25']),
-                    fins25: findCol(['FINS 25M', 'FINS25']),
-                    gb25: findCol(['GB 25M', 'GB25']),
-                    gb50: findCol(['GB 50M', 'GB50']),
-                    gb100: findCol(['GB 100M', 'GB100']),
-                    gd25: findCol(['GD 25M', 'GD25']),
-                    gd50: findCol(['GD 50M', 'GD50']),
-                    gd100: findCol(['GD 100M', 'GD100']),
-                    gpg25: findCol(['GPG 25M', 'GPG25']),
-                    gpg50: findCol(['GPG 50M', 'GPG50']),
-                    gpg100: findCol(['GPG 100M', 'GPG100']),
-                    gkp25: findCol(['GKP 25M', 'GKP25']),
-                    gkp50: findCol(['GKP 50M', 'GKP50']),
-                    gkp100: findCol(['GKP 100M', 'GKP100']),
-                    im100: findCol(['IM 100M', 'IM100']),
-                    im200: findCol(['IM 200M', 'IM200']),
                     ket: findCol(['KETERANGAN']),
                     pelatih: findCol(['NAMA PELATIH']),
                     nopelatih: findCol(['NO PELATIH'])
                 };
+                EVENTS.forEach(ev => { colMap[ev.key] = findEventCol(ev); });
 
                 if (colMap.nama === -1) { alert('Kolom "NAMA LENGKAP" tidak terdeteksi.'); callback(null, 0, colMap); return; }
 
                 if (rows[0] && rows[0][0] && String(rows[0][0]).trim()) {
                     const firstCell = String(rows[0][0]).trim();
-                    if (firstCell.length > 5 && !firstCell.toUpperCase().includes('NO')) {
+                    if (firstCell.length > 5 && !/^NO$/i.test(firstCell) && !firstCell.toUpperCase().includes('NAMA LENGKAP')) {
                         if (currentUser?.role === 'admin') {
                             document.getElementById('inpNamaKegiatan').value = firstCell;
                             updateGlobalTitle();
@@ -3633,38 +4033,25 @@
                 for (let i = headerRowIdx + 1; i < rows.length; i++) {
                     const row = rows[i];
                     if (!row) continue;
-                    const nama = String(row[colMap.nama] || '').trim();
+                    // (perbaikan) kolom yang tidak ada di file menghasilkan '' — bukan teks "undefined"
+                    const get = key => colMap[key] !== -1 ? String(row[colMap[key]] ?? '').trim() : '';
+                    const nama = get('nama');
                     if (!nama || nama.toUpperCase() === 'NAMA LENGKAP') continue;
-
+                    const jkRaw = get('jk').toUpperCase();
                     const p = {
-                        nama: nama,
-                        jk: String(row[colMap.jk] !== -1 ? row[colMap.jk] : '').trim().toUpperCase(),
-                        klub: String(row[colMap.klub] !== -1 ? row[colMap.klub] : '').trim(),
-                        tahun: colMap.tahun !== -1 ? String(row[colMap.tahun] || '').trim() : '',
-                        seed: colMap.seed !== -1 ? String(row[colMap.seed] || '').trim() : '',
-                        kbgb25: colMap.kbgb25 !== -1 && isV(row[colMap.kbgb25]),
-                        kbgd25: colMap.kbgd25 !== -1 && isV(row[colMap.kbgd25]),
-                        fins25: colMap.fins25 !== -1 && isV(row[colMap.fins25]),
-                        gb25: colMap.gb25 !== -1 && isV(row[colMap.gb25]),
-                        gb50: colMap.gb50 !== -1 && isV(row[colMap.gb50]),
-                        gb100: colMap.gb100 !== -1 && isV(row[colMap.gb100]),
-                        gd25: colMap.gd25 !== -1 && isV(row[colMap.gd25]),
-                        gd50: colMap.gd50 !== -1 && isV(row[colMap.gd50]),
-                        gd100: colMap.gd100 !== -1 && isV(row[colMap.gd100]),
-                        gpg25: colMap.gpg25 !== -1 && isV(row[colMap.gpg25]),
-                        gpg50: colMap.gpg50 !== -1 && isV(row[colMap.gpg50]),
-                        gpg100: colMap.gpg100 !== -1 && isV(row[colMap.gpg100]),
-                        gkp25: colMap.gkp25 !== -1 && isV(row[colMap.gkp25]),
-                        gkp50: colMap.gkp50 !== -1 && isV(row[colMap.gkp50]),
-                        gkp100: colMap.gkp100 !== -1 && isV(row[colMap.gkp100]),
-                        im100: colMap.im100 !== -1 && isV(row[colMap.im100]),
-                        im200: colMap.im200 !== -1 && isV(row[colMap.im200]),
-                        ket: String(row[colMap.ket] !== -1 ? row[colMap.ket] : '').trim(),
-                        namaPelatih: colMap.pelatih !== -1 ? String(row[colMap.pelatih] || '').trim() : '',
-                        noPelatih: colMap.nopelatih !== -1 ? String(row[colMap.nopelatih] || '').trim() : '',
+                        id: newId(),
+                        nama,
+                        jk: jkRaw.startsWith('L') ? 'L' : (jkRaw.startsWith('P') ? 'P' : ''),
+                        klub: get('klub'),
+                        tahun: get('tahun').replace(/\D/g, '').slice(0, 4),
+                        seed: get('seed'),
+                        ket: get('ket'),
+                        namaPelatih: get('pelatih'),
+                        noPelatih: get('nopelatih'),
                         hasil: {}, ketHasil: {}, statusHasil: {},
                         ownerClubId: null
                     };
+                    EVENTS.forEach(ev => { p[ev.key] = colMap[ev.key] !== -1 && isV(row[colMap[ev.key]]); });
                     newList.push(p);
                 }
                 callback(newList, newList.length, colMap);
@@ -3708,6 +4095,7 @@
         const file = e.target.files[0];
         if (!file) return;
         if (currentUser?.role !== 'club') { alert('❌ Import hanya untuk peserta/club.'); e.target.value = ''; return; }
+        if (checkClubLocked()) { alert('🔒 Pendaftaran sudah dikunci/ditutup oleh panitia.'); e.target.value = ''; return; }
         const myAthletes = dataPeserta.filter(p => p.ownerClubId === currentUser.clubId);
         if (myAthletes.length > 0) {
             alert(`❌ Import hanya bisa dilakukan kalau daftar atlet Anda masih KOSONG.\n\nSaat ini Anda sudah punya ${myAthletes.length} atlet.\nHapus dulu semua atlet jika ingin import ulang, atau hubungi admin.`);
@@ -3715,20 +4103,24 @@
             return;
         }
         parseExcelFormA3(file, 'append', function(newList, addedCount, colMap) {
-            if (!newList) { e.target.value = ''; return; }
+            if (!newList) return;
             const clubObj = clubs.find(c => c.id === currentUser.clubId);
+            let dropped = 0;
             newList.forEach(p => {
                 p.ownerClubId = currentUser.clubId;
                 if (!p.klub && clubObj) p.klub = clubObj.namaClub;
                 if (!p.namaPelatih && clubObj) p.namaPelatih = clubObj.official;
                 if (!p.noPelatih && clubObj) p.noPelatih = clubObj.waOriginal || clubObj.wa;
+                // Server menolak nomor yang tidak dibuka untuk group atlet, jadi dilepas di sini dulu
+                EVENTS.forEach(ev => { if (p[ev.key] && !isEventAllowedForPeserta(p, ev.key)) { p[ev.key] = false; dropped++; } });
             });
             dataPeserta = dataPeserta.concat(newList);
             selectedRows.clear();
             isDirty = true;
             renderTable(); saveData();
             const detectedCols = Object.keys(colMap).filter(k => colMap[k] !== -1).length;
-            alert(`✅ Import Berhasil!\nDitambahkan: ${addedCount} atlet ke club "${clubObj?.namaClub || '-'}".\nKolom terdeteksi: ${detectedCols} dari ${Object.keys(colMap).length}`);
+            alert(`✅ Import Berhasil!\nDitambahkan: ${addedCount} atlet ke club "${clubObj?.namaClub || '-'}".\nKolom terdeteksi: ${detectedCols} dari ${Object.keys(colMap).length}` +
+                  (dropped ? `\n\n⚠️ ${dropped} pilihan nomor dilepas karena tidak dibuka untuk group umur atletnya (atau tahun lahir kosong).` : ''));
         });
         e.target.value = '';
     });
@@ -3746,32 +4138,31 @@
                 const wb = XLSX.read(data, { type: 'array' });
                 const sheet = wb.Sheets[wb.SheetNames[0]];
                 const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                let currentEvKey = null; let updates = 0;
+                const normName = v => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ');
+                let currentEv = null, updates = 0, notFound = 0;
                 for (let i = 0; i < rows.length; i++) {
                     const row = rows[i];
                     if (!row || row.length === 0) continue;
                     const firstCol = String(row[0]).trim().toUpperCase();
-                    const evMatch = firstCol.match(/^(\d{2,4})\b/);
-                    if (evMatch) {
-                        const evNum = evMatch[1];
-                        const matchEv = customEvents.find(ce => String(ce.title).trim() === evNum);
-                        if (matchEv) currentEvKey = matchEv.evKey;
-                    }
-                    if (currentEvKey && !isNaN(parseInt(row[0])) && row.length >= 8) {
-                        const namaAtlet = String(row[1]).trim().toUpperCase().replace(/\s+/g, ' ');
-                        const hasilRaw = String(row[7]).replace(/\D/g, '').slice(0, 7);
-                        const pIdx = dataPeserta.findIndex(p => (p.nama||'').trim().toUpperCase().replace(/\s+/g, ' ') === namaAtlet);
-                        if (pIdx !== -1) {
-                            if (!dataPeserta[pIdx].hasil) dataPeserta[pIdx].hasil = {};
-                            dataPeserta[pIdx].hasil[currentEvKey] = hasilRaw;
-                            updates++;
-                        }
-                    }
+                    // Judul event di file export: "101 - GAYA BEBAS 25M PUTRA"
+                    const evMatch = firstCol.match(/^(\d{2,4})\s*-/);
+                    if (evMatch) { currentEv = customEvents.find(ce => String(ce.title).trim() === evMatch[1]) || null; continue; }
+                    if (!currentEv || row.length < 8) continue;
+                    if (!/^\d{1,2}$/.test(firstCol)) continue;            // baris lintasan saja
+                    const namaAtlet = normName(row[1]);
+                    if (!namaAtlet || namaAtlet === '<EMPTY>') continue;
+                    const ms = parseTimeInput(row[7]);
+                    if (ms === null) continue;
+                    const p = dataPeserta.find(x => x[currentEv.evKey] && x.jk === currentEv.jk && normName(x.nama) === namaAtlet);
+                    if (!p) { notFound++; continue; }
+                    if (!p.hasil) p.hasil = {};
+                    p.hasil[currentEv.evKey] = ms;
+                    updates++;
                 }
                 isDirty = true;
                 saveData();
                 renderBukuAcara(); renderResult(); renderSertifikat(); renderBestSwimmer();
-                alert(`✅ Import Heat Sheet Berhasil!\nUpdate waktu: ${updates} baris.`);
+                alert(`✅ Import Heat Sheet selesai.\nWaktu diperbarui: ${updates} baris.` + (notFound ? `\n⚠️ ${notFound} nama tidak cocok dengan peserta nomor tersebut.` : ''));
             } catch (err) {
                 console.error(err);
                 alert('❌ Gagal membaca file Excel Heat Sheet.');
@@ -3782,17 +4173,20 @@
     });
 
     // ============================================================
-    // DOWNLOAD / LOAD MASTER JSON
+    // MASTER JSON (backup & migrasi dari versi lama)
     // ============================================================
     window.downloadMaster = function() {
         const data = {
+            format: 'swimapp-supabase-v1',
+            exportedAt: new Date().toISOString(),
             namaKegiatan: globalNamaKegiatan,
             peserta: dataPeserta,
             harga: globalHarga,
-            customEvents: customEvents,
-            lanes: document.getElementById('inpLanes').value,
+            customEvents: customEventsSaved.map(({ title, evKey, jk }) => ({ title, evKey, jk })),
+            lanes: getLanes(),
+            jamMulai: getJamMulai(),
+            durasi: getDurasi(),
             resultMeta: resultMeta,
-            clubs: clubs,
             groupEventMatrix: groupEventMatrix
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -3804,68 +4198,93 @@
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     };
 
+    // Impor file master (juga dari versi lama yang masih localStorage) ke database
     document.getElementById('masterInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
+        e.target.value = '';
         if (!file) return;
+        if (!isAdmin()) { alert('❌ Hanya admin yang bisa impor master.'); return; }
         const reader = new FileReader();
-        reader.onload = function(evt) {
+        reader.onload = async function(evt) {
+            let data;
+            try { data = JSON.parse(evt.target.result); } catch (err) { alert('❌ Gagal membaca file. Pastikan file berekstensi .json.'); return; }
+            if (!data || !(data.peserta || data.customEvents)) { alert('❌ Format file master tidak valid.'); return; }
+            const jml = Array.isArray(data.peserta) ? data.peserta.length : 0;
+            if (!confirm(`Impor master akan MENGGANTI data di database untuk kegiatan ini:\n\n• ${jml} peserta (peserta lama dihapus)\n• hasil lomba, nomor lomba, matriks group, dan pengaturan\n\nLanjutkan?`)) return;
             try {
-                const data = JSON.parse(evt.target.result);
-                if (data && (data.peserta || data.customEvents)) {
-                    dataPeserta = data.peserta || [];
-                    globalHarga = data.harga || 0;
-                    customEvents = data.customEvents || [];
-                    globalNamaKegiatan = data.namaKegiatan || 'KSC SWIMMING COMPETITION 2026 (TIME TRIAL)';
-                    resultMeta = data.resultMeta || { titimangsa: '', referee: '' };
-                    if (data.clubs) { clubs = data.clubs; saveClubs(); }
-                    if (data.groupEventMatrix) { groupEventMatrix = data.groupEventMatrix; saveMatrix(); }
-                    customEvents = customEvents.map(ev => {
-                        if (ev.title && ev.title.includes(' - ')) return { ...ev, title: ev.title.split(' - ')[0].trim() };
-                        return ev;
+                const isNew = data.format === 'swimapp-supabase-v1';
+                const clubIds = new Set(clubs.map(c => c.id));
+                const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                const imported = (data.peserta || []).filter(p0 => p0 && typeof p0 === 'object').map(p0 => {
+                    const p = {
+                        id: (isNew && uuidRe.test(p0.id || '')) ? p0.id : newId(),
+                        nama: String(p0.nama || ''), jk: (p0.jk === 'L' || p0.jk === 'P') ? p0.jk : '',
+                        klub: String(p0.klub || ''), tahun: p0.tahun ? String(p0.tahun) : '', seed: String(p0.seed || ''),
+                        ket: String(p0.ket || ''), namaPelatih: String(p0.namaPelatih || ''), noPelatih: String(p0.noPelatih || ''),
+                        ownerClubId: clubIds.has(p0.ownerClubId) ? p0.ownerClubId : null,
+                        hasil: {}, statusHasil: {}, ketHasil: {}
+                    };
+                    EVENTS.forEach(ev => { p[ev.key] = !!p0[ev.key]; });
+                    Object.entries(p0.hasil || {}).forEach(([ev, v]) => {
+                        let ms = null;
+                        if (isNew) ms = (v === null || v === '') ? null : Number(v);
+                        else if (String(v).replace(/\D/g, '').length >= 6) ms = digitsToMs(v);   // format lama: digit mmssmmm
+                        if (ms !== null && !isNaN(ms)) p.hasil[ev] = ms;
                     });
-                    document.getElementById('inpNamaKegiatan').value = globalNamaKegiatan;
-                    document.getElementById('inpHarga').value = globalHarga;
-                    if (document.getElementById('inpTitimangsa')) document.getElementById('inpTitimangsa').value = resultMeta.titimangsa || '';
-                    if (document.getElementById('inpReferee')) document.getElementById('inpReferee').value = resultMeta.referee || '';
-                    if (data.lanes) { document.getElementById('inpLanes').value = data.lanes; localStorage.setItem(STORAGE_LANES, data.lanes); }
-                    selectedRows.clear();
-                    saveData();
-                    updateGlobalTitle();
-                    renderTable(); populateResultEvents(); renderBukuAcara(); renderResult(); renderSertifikat(); renderBestSwimmer(); renderClubAccounts(); renderMatrixDashboard();
-                    alert('✅ Master Backup berhasil dimuat!');
-                } else { alert('❌ Format file master tidak valid.'); }
-            } catch (err) { alert('❌ Gagal membaca file. Pastikan file berekstensi .json.'); }
+                    Object.entries(p0.statusHasil || {}).forEach(([ev, v]) => { if (['DQ', 'DNS', 'DNF'].includes(v)) p.statusHasil[ev] = v; });
+                    Object.entries(p0.ketHasil || {}).forEach(([ev, v]) => { if (v) p.ketHasil[ev] = String(v); });
+                    return p;
+                });
+
+                showToast('⏳ Mengimpor master ke database...', 'pending', 0);
+                if (Array.isArray(data.customEvents) && data.customEvents.length) {
+                    const evs = data.customEvents
+                        .map(ev => ({ title: String(ev.title || '').split(' - ')[0].trim(), evKey: ev.evKey, jk: ev.jk }))
+                        .filter(ev => EVENTS.some(x => x.key === ev.evKey) && (ev.jk === 'L' || ev.jk === 'P'));
+                    await saveNomorLomba(evs);
+                }
+                if (data.groupEventMatrix && typeof data.groupEventMatrix === 'object') {
+                    const m = createPresetMatrix();
+                    GROUP_LIST.forEach(g => EVENTS.forEach(ev => {
+                        if (data.groupEventMatrix[g] && data.groupEventMatrix[g][ev.key] !== undefined) m[g][ev.key] = !!data.groupEventMatrix[g][ev.key];
+                    }));
+                    groupEventMatrix = m;
+                    await saveMatrix();
+                }
+                globalNamaKegiatan = data.namaKegiatan || globalNamaKegiatan;
+                globalHarga = Number(data.harga) || 0;
+                resultMeta = { titimangsa: (data.resultMeta && data.resultMeta.titimangsa) || '', referee: (data.resultMeta && data.resultMeta.referee) || '' };
+                setVal('inpNamaKegiatan', globalNamaKegiatan); setVal('inpHarga', globalHarga);
+                setVal('inpTitimangsa', resultMeta.titimangsa); setVal('inpReferee', resultMeta.referee);
+                if (data.lanes) setVal('inpLanes', data.lanes);
+                if (data.jamMulai) setVal('inpJamMulai', data.jamMulai);
+                if (data.durasi) setVal('inpDurasiGlobal', data.durasi);
+                updateGlobalTitle();
+
+                dataPeserta = imported;
+                selectedRows.clear();
+                await flushSync();
+
+                renderTable(); populateResultEvents(); renderBukuAcara(); renderResult(); renderSertifikat(); renderBestSwimmer(); renderClubAccounts(); renderMatrixDashboard();
+                const clubNote = (Array.isArray(data.clubs) && data.clubs.length)
+                    ? `\n\nℹ️ ${data.clubs.length} akun club dari file lama TIDAK ikut diimpor (login sekarang memakai email). Atlet mereka masuk sebagai data manual admin; club bisa daftar ulang.` : '';
+                alert((syncState === 'ok'
+                    ? `✅ Master berhasil diimpor ke database: ${imported.length} peserta.`
+                    : '⚠️ Data sudah dimuat, tapi sebagian belum tersimpan ke server. Aplikasi akan mencoba lagi otomatis — jangan tutup halaman dulu.') + clubNote);
+            } catch (err) {
+                console.error(err);
+                alert('❌ Gagal impor master: ' + (err.message || err));
+            }
         };
         reader.readAsText(file);
-        e.target.value = '';
     });
+
     // ============================================================
     // INIT APLIKASI
     // ============================================================
     (async function initApp() {
-        await initPassword();
-        loadClubs();
-        loadMatrix();
-        initCustomEvents();
-        initLanes();
-        loadData();
-
-        // Set durasi global dari localStorage jika ada
-        const savedDurasi = localStorage.getItem(STORAGE_DURASI_GLOBAL);
-        if (savedDurasi) {
-            const el = document.getElementById('inpDurasiGlobal');
-            if (el) el.value = savedDurasi;
-        }
-
-        const sess = loadSession();
-        if (sess) {
-            currentUser = sess;
-            hideLoginOverlay();
-            applyRoleUI();
-        } else {
-            currentUser = null;
-            showLoginOverlay();
-        }
+        try { const rawHidden = localStorage.getItem(STORAGE_HIDDEN_COLS); if (rawHidden) hiddenCols = new Set(JSON.parse(rawHidden)); } catch (e) {}
+        groupEventMatrix = createPresetMatrix();
 
         const namaKegiatanEl = document.getElementById('inpNamaKegiatan');
         if (namaKegiatanEl) {
@@ -3875,44 +4294,39 @@
                 saveData();
             });
         }
-        
-        // Listener simpan durasi global
-        const durasiGlobalEl = document.getElementById('inpDurasiGlobal');
-        if (durasiGlobalEl) {
-            durasiGlobalEl.addEventListener('input', function() {
-                localStorage.setItem(STORAGE_DURASI_GLOBAL, this.value);
-            });
+
+        showLoginOverlay();
+        if (!sb) {
+            showLoginError('❌ Library Supabase gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.');
+            return;
+        }
+        sb.auth.onAuthStateChange((event) => {
+            if (event === 'PASSWORD_RECOVERY') { showLoginOverlay(); switchLoginTab('recovery'); }
+        });
+        if (IS_RECOVERY) { switchLoginTab('recovery'); return; }
+
+        setBootStatus('⏳ Memeriksa sesi login...');
+        try {
+            const { data } = await sb.auth.getSession();
+            setBootStatus('');
+            if (data && data.session) await bootAfterLogin(data.session.user);
+        } catch (e) {
+            setBootStatus('');
+            showLoginError('❌ ' + translateAuthError(e));
         }
     })();
 
-    // ============================================================
-    // BEFORE UNLOAD
-    // ============================================================
+    // Coba kirim ulang begitu internet kembali
+    window.addEventListener('online', () => { if (syncState !== 'ok') syncNow(); });
+
     window.addEventListener('beforeunload', function(e) {
-        if (isDirty) {
-            saveData();
-            saveResultMeta();
+        if (syncState !== 'ok' || syncTimer || syncing) {
+            syncNow();
             e.preventDefault();
-            e.returnValue = 'Ada data yang belum tersimpan. Yakin ingin keluar?';
+            e.returnValue = 'Ada data yang belum tersimpan ke server. Yakin ingin keluar?';
             return e.returnValue;
         }
     });
-
-    // ============================================================
-    // SESSION TIMEOUT CHECK
-    // ============================================================
-    setInterval(() => {
-        const raw = sessionStorage.getItem(STORAGE_SESSION);
-        if (!raw) return;
-        try {
-            const s = JSON.parse(raw);
-            if (Date.now() - s.lastActivity > SESSION_TIMEOUT_MS) {
-                alert('⏱️ Sesi login habis karena tidak ada aktivitas 30 menit. Silakan login ulang.');
-                sessionStorage.removeItem(STORAGE_SESSION);
-                location.reload();
-            }
-        } catch (e) {}
-    }, 60 * 1000);
 
 </script>
 </body>
