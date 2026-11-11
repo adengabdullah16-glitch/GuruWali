@@ -140,7 +140,29 @@
       "Apa yang saya pelajari dari refleksi ini untuk menjadi pribadi yang lebih baik?"],
   };
 
+  // ---------- Data diri (diisi murid, melengkapi kolom lampiran) ----------
+  // [kunci, label, pilihan (null = teks bebas), teks panjang?]
+  const DATADIRI = [
+    ["gol_darah", "Golongan darah", ["A", "B", "AB", "O", "Tidak tahu"]],
+    ["jumlah_saudara", "Jumlah bersaudara (termasuk kamu)", null],
+    ["gaya_belajar", "Gaya belajar", ["Visual", "Auditori", "Kinestetik"]],
+    ["kesulitan_belajar", "Kesulitan belajar yang kamu rasakan", null, true],
+    ["mapel_mudah", "Mapel yang paling mudah kamu pahami", null],
+    ["mapel_sulit", "Mapel yang paling sulit kamu pahami", null],
+    ["mapel_pilihan", "Mapel pilihan yang kamu ambil/rencanakan", null],
+    ["guru_mapel_pilihan", "Guru mapel pilihan", null],
+    ["rencana_karir", "Rencana setelah lulus", ["Kuliah", "Bekerja", "Wirausaha", "Belum menentukan"]],
+    ["prodi_tujuan", "Prodi yang dituju / pekerjaan yang diinginkan", null],
+    ["cita_cita", "Cita-cita", null],
+  ];
+  const BANTU_GAYA = {
+    Visual: "lebih mudah paham lewat gambar, video, catatan berwarna",
+    Auditori: "lebih mudah paham lewat mendengar penjelasan dan diskusi",
+    Kinestetik: "lebih mudah paham lewat praktik dan bergerak",
+  };
+
   const INFO = {
+    datadiri: { judul: "Data diri", singkat: "Lengkapi data dirimu untuk guru wali", periode: "tahun" },
     riasec1: { judul: "Minat (RIASEC 1)", singkat: "Centang hal-hal yang kamu SUKA", periode: "tahun" },
     riasec2: { judul: "Kemampuan (RIASEC 2)", singkat: "Pilih 8 hal yang paling BISA kamu lakukan", periode: "tahun" },
     kompetensi: { judul: "Kuesioner 8 dimensi", singkat: "Nilai dirimu dalam 8 dimensi profil lulusan", periode: "bulan" },
@@ -176,7 +198,7 @@
 
   window.INSTRUMEN = {
     RIASEC1, RIASEC2, KUNCI1, KUNCI2, TIPE, DIMENSI, SKALA, ID_KOMPETENSI, REFLEKSI, NILAI_REFLEKSI,
-    PERTANYAAN, INFO, URUT, KUNCI_SEMENTARA: true,
+    PERTANYAAN, INFO, URUT, KUNCI_SEMENTARA: true, DATADIRI, BANTU_GAYA,
     skorRiasec, skorKompetensi, skorRefleksi,
   };
 })();
