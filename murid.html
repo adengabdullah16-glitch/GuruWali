@@ -64,6 +64,7 @@ h2.bagian{font-size:18px;margin:24px 0 10px}
 .skala input:focus-visible+span{outline:3px solid var(--teal);outline-offset:2px}
 h3.dim{font-size:16px;margin:18px 0 8px}
 label.tanya{display:block;font-weight:600;margin:14px 0 6px}
+select.dd,input.dd{width:100%;border:2px solid var(--tinta);border-radius:6px;background:var(--putih);padding:10px 12px;min-height:48px;font-size:16px}
 textarea{width:100%;border:2px solid var(--tinta);border-radius:6px;background:var(--putih);padding:10px 12px;min-height:90px;font-size:16px;resize:vertical}
 .bawah{position:sticky;bottom:0;background:var(--kertas);padding:12px 0 calc(12px + env(safe-area-inset-bottom));margin-top:16px;border-top:1px solid var(--garis)}
 .hitung{text-align:center;font-weight:700;margin-bottom:8px}
@@ -155,7 +156,7 @@ function galatBesar(t) { $("memuat").hidden = true; $("beranda").hidden = true; 
 function renderBeranda() {
   $("sapa").textContent = "Halo, " + data.murid.nama;
   $("kelas").textContent = data.murid.kelas ? "Kelas " + data.murid.kelas : "";
-  $("daftarIsian").replaceChildren(...["riasec1", "riasec2", "kompetensi", "refleksi"].map((jenis) => {
+  $("daftarIsian").replaceChildren(...["datadiri", "riasec1", "riasec2", "kompetensi", "refleksi"].map((jenis) => {
     const a = isianSekarang(jenis);
     return el("button", { class: "kartu", type: "button", onclick: () => bukaIsian(jenis) },
       el("b", { text: I.INFO[jenis].judul }),
@@ -206,7 +207,7 @@ function bukaIsian(jenis) {
   $("fPeriode").textContent = labelPeriode(jenis) + (a ? " · kamu sudah mengisi, jawaban lama akan diganti" : "");
   $("fGalat").hidden = true;
   const isi = $("fIsi"); isi.replaceChildren();
-  ({ riasec1: formRiasec1, riasec2: formRiasec2, kompetensi: formKompetensi, refleksi: formRefleksi })[jenis](isi, a);
+  ({ datadiri: formDataDiri, riasec1: formRiasec1, riasec2: formRiasec2, kompetensi: formKompetensi, refleksi: formRefleksi })[jenis](isi, a);
   perbaruiHitung();
   $("beranda").hidden = true; $("isian").hidden = false;
   window.scrollTo(0, 0);
@@ -222,6 +223,21 @@ $("btnKembali").addEventListener("click", () => {
 });
 window.addEventListener("popstate", () => { if (!$("isian").hidden) tutupIsian(); });
 
+function formDataDiri(w, a) {
+  $("fPetunjuk").textContent = "Isi sesuai keadaanmu. Kalau belum tahu, boleh dikosongkan dulu dan dilengkapi nanti.";
+  const isi = a ? a.jawaban.isi || {} : {};
+  I.DATADIRI.forEach(([k, label, pilihan, panjang]) => {
+    const id = "dd_" + k;
+    let inp;
+    if (pilihan) {
+      inp = el("select", { id, class: "dd", "data-k": k }, el("option", { value: "", text: "Pilih" }),
+        ...pilihan.map((v) => el("option", { value: v, text: I.BANTU_GAYA[v] && k === "gaya_belajar" ? `${v} (${I.BANTU_GAYA[v]})` : v })));
+    } else if (panjang) inp = el("textarea", { id, rows: 3, "data-k": k });
+    else inp = el("input", { id, class: "dd", "data-k": k, type: "text", inputmode: k === "jumlah_saudara" ? "numeric" : null });
+    inp.value = isi[k] || "";
+    w.append(el("label", { class: "tanya", for: id, text: label }), inp);
+  });
+}
 function formRiasec1(w, a) {
   $("fPetunjuk").textContent = "Centang semua pernyataan yang sesuai dengan dirimu. Ingat, ini tentang hal yang kamu SUKA, bukan yang kamu BISA. Tidak ada jawaban benar atau salah.";
   const pilih = new Set(a ? a.jawaban.pilih : []);
@@ -290,6 +306,11 @@ function formRefleksi(w, a) {
 
 function kumpulkan() {
   const w = $("fIsi");
+  if (jenisAktif === "datadiri") {
+    const isi = {};
+    w.querySelectorAll("[data-k]").forEach((x) => { if (x.value.trim()) isi[x.dataset.k] = x.value.trim(); });
+    return { isi };
+  }
   if (jenisAktif === "riasec1") return { pilih: [...w.querySelectorAll("input:checked")].map((x) => +x.value) };
   if (jenisAktif === "riasec2") return { pilih: [...w.querySelectorAll("[aria-pressed=true]")].map((x) => +x.dataset.n) };
   if (jenisAktif === "kompetensi") {
@@ -310,7 +331,8 @@ function perbaruiHitung() {
   if (!jenisAktif) return;
   const j = kumpulkan();
   let teks = "", siap = true;
-  if (jenisAktif === "riasec1") { teks = `${j.pilih.length} dari 42 dicentang`; siap = j.pilih.length > 0; }
+  if (jenisAktif === "datadiri") { const n = Object.keys(j.isi).length; teks = `${n} dari ${I.DATADIRI.length} terisi`; siap = n > 0; }
+  else if (jenisAktif === "riasec1") { teks = `${j.pilih.length} dari 42 dicentang`; siap = j.pilih.length > 0; }
   else if (jenisAktif === "riasec2") { teks = `${j.pilih.length} dari 8 dipilih`; siap = j.pilih.length === 8; }
   else if (jenisAktif === "kompetensi") { const n = Object.keys(j.nilai).length; teks = `${n} dari 16 dinilai`; siap = n === 16; }
   else { const n = Object.keys(j.jawab).length; teks = `${n} dari 6 dijawab`; siap = n === 6; }
