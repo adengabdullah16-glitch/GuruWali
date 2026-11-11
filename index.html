@@ -139,6 +139,36 @@ a{color:var(--teal);font-weight:600}
 .panel p{margin:6px 0 0}
 a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--tinta)}
 
+/* cetak lampiran */
+label.cek{display:flex;gap:10px;align-items:center;padding:8px 0;font-weight:500;font-size:15px;margin:0}
+label.cek input{width:22px;height:22px;min-height:0;flex:0 0 22px;padding:0;accent-color:var(--teal)}
+#cetakan{background:#fff;border:2px solid var(--tinta);border-radius:8px;padding:16px;overflow-x:auto;margin-top:14px}
+.ct-lembar{min-width:960px;color:#000;font-family:'Times New Roman',Times,serif;font-size:11pt;line-height:1.35}
+.ct-lembar + .ct-lembar{margin-top:40px;padding-top:24px;border-top:2px dashed var(--garis)}
+.ct-lembar h2{font-family:inherit;text-align:center;font-size:13pt;margin:0 0 10px;letter-spacing:.5px}
+.ct-info{border-collapse:collapse;margin:0 0 10px;font-size:10.5pt}
+.ct-info td{padding:1px 10px 1px 0}
+.ct-tabel{width:100%;border-collapse:collapse;font-size:9.5pt;line-height:1.3}
+.ct-tabel th,.ct-tabel td{border:1px solid #000;padding:4px 5px;vertical-align:top;text-align:left}
+.ct-tabel th{background:#e6e6e6;text-align:center;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ct-tabel tr{break-inside:avoid;page-break-inside:avoid}
+.ct-tabel .ct-no{text-align:center}
+.ct-tabel .ct-kosong{text-align:center;color:#555;padding:12px}
+.ct-ttd{display:flex;justify-content:space-between;margin-top:22px;break-inside:avoid;page-break-inside:avoid;font-size:11pt}
+.ct-ttd div{width:38%}
+.ct-ttd p{margin:0}
+.ct-ttd .ct-nama{margin-top:64px;font-weight:700;text-decoration:underline}
+@page{size:A4 landscape;margin:12mm}
+@media print{
+  html,body{height:auto;background:#fff!important;background-image:none!important}
+  header,nav,.fab,.ct-kontrol,#toast,dialog{display:none!important}
+  #app{display:block;height:auto}
+  main{overflow:visible;padding:0}
+  #cetakan{border:0;border-radius:0;padding:0;margin:0;overflow:visible}
+  .ct-lembar{min-width:0}
+  .ct-lembar + .ct-lembar{margin-top:0;padding-top:0;border-top:0;break-before:page;page-break-before:always}
+}
+
 /* dialog */
 dialog{border:2px solid var(--tinta);border-radius:10px;padding:0;width:min(560px,calc(100% - 24px));max-height:92vh;overflow-y:auto;background:var(--kertas)}
 dialog::backdrop{background:rgba(30,42,68,.55)}
@@ -317,6 +347,32 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
         <button class="btn utama" id="btnSimpanPengaturan">Simpan pengaturan</button>
         <p class="pesan" id="pesanPengaturan" role="status"></p>
       </form>
+      <div class="panel" style="margin-top:18px">
+        <b>Lampiran Program Kerja</b>
+        <p class="redup kecil">Cetak atau simpan sebagai PDF: profil murid, asesmen, rencana karir, jurnal, catatan perkembangan, dan rekap kehadiran.</p>
+        <button class="btn utama lebar" type="button" id="btnKeCetak" style="margin:10px 0 0">Cetak lampiran</button>
+      </div>
+    </section>
+
+    <!-- CETAK LAMPIRAN -->
+    <section id="hal-cetak" hidden>
+      <div class="ct-kontrol">
+        <button class="kembali" id="btnKembaliCetak" type="button">‹ Pengaturan</button>
+        <h2 class="judul" style="font-size:20px">Cetak lampiran</h2>
+        <p class="sub">Diisi otomatis dari data aplikasi untuk satu semester.</p>
+        <form id="formCetak">
+          <div class="dua">
+            <div class="baris"><label for="ct_tahun">Tahun ajaran</label><input id="ct_tahun" placeholder="2026/2027" required></div>
+            <div class="baris"><label for="ct_semester">Semester</label><select id="ct_semester"><option>Ganjil</option><option>Genap</option></select></div>
+            <div class="baris penuh"><label for="ct_tanggal">Tanggal tanda tangan</label><input id="ct_tanggal" type="date" required></div>
+          </div>
+          <fieldset><legend>Lampiran yang dicetak</legend><div id="ctPilih"></div></fieldset>
+          <button class="btn utama lebar" id="btnBuatCetak">Buat pratinjau</button>
+        </form>
+        <div id="ctPeringatan"></div>
+        <button class="btn lebar" id="btnCetak" type="button" hidden>Cetak / Simpan PDF</button>
+      </div>
+      <div id="cetakan" hidden></div>
     </section>
   </main>
   <nav aria-label="Menu utama">
@@ -365,6 +421,7 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
       </div>
       <div class="baris"><label for="j_rujuk">Dirujuk ke</label>
         <select id="j_rujuk"><option value="">Tidak dirujuk</option><option>BK</option><option>Wali kelas</option></select></div>
+      <div class="baris"><label for="j_hasil_tl">Hasil tindak lanjut</label><textarea id="j_hasil_tl" rows="2" placeholder="Diisi setelah tindak lanjut berjalan"></textarea></div>
     </fieldset>
     <div class="baris"><label for="j_catatan_privat">Catatan privat <span class="redup">(hanya untuk Anda)</span></label><textarea id="j_catatan_privat" rows="2"></textarea></div>
     <p class="pesan" id="pesanJurnal" role="alert"></p>
@@ -573,6 +630,12 @@ const BAGIAN = [
     ["hobi_bakat", "Hobi / bakat"], ["cita_cita", "Cita-cita"],
     ["minat_belajar", "Minat belajar", { area: 1 }],
   ]],
+  ["Rencana karir & mapel pilihan", [
+    ["rencana_karir", "Rencana karir", { pilih: [["", "Pilih"], ["Kuliah", "Kuliah"], ["Bekerja", "Bekerja"], ["Wirausaha", "Wirausaha"], ["Belum menentukan", "Belum menentukan"]] }],
+    ["prodi_tujuan", "Prodi / sasaran dunia kerja"],
+    ["mapel_pilihan", "Mapel pilihan", { lebar: 1 }],
+    ["guru_mapel_pilihan", "Guru mapel pilihan", { lebar: 1 }],
+  ]],
   ["Catatan", [["riwayat_kesehatan", "Riwayat kesehatan", { area: 1 }], ["catatan_murid", "Catatan lain", { area: 1 }]]],
 ];
 const KOLOM_M = BAGIAN.flatMap(([, f]) => f.map(([k]) => k));
@@ -627,7 +690,7 @@ const KOLOM_PER = {
 };
 
 // ---------- tampilan ----------
-const HAL = ["murid", "detail", "kelompok", "jurnal", "pengaturan"];
+const HAL = ["murid", "detail", "kelompok", "jurnal", "pengaturan", "cetak"];
 function keLogin(pesan = "") {
   simpanToken(null); detail = null;
   document.querySelectorAll("dialog[open]").forEach((d) => d.close());
@@ -642,7 +705,7 @@ async function keApp() {
 }
 function tampilHalaman(h) {
   HAL.forEach((x) => ($("hal-" + x).hidden = x !== h));
-  const n = h === "detail" ? "murid" : h;
+  const n = h === "detail" ? "murid" : h === "cetak" ? "pengaturan" : h;
   document.querySelectorAll("nav button").forEach((b) => {
     if (b.dataset.hal === n) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
@@ -650,6 +713,7 @@ function tampilHalaman(h) {
   $("utama").scrollTop = 0;
   if (h === "jurnal") muatJurnal();
   if (h === "kelompok") muatKelompok();
+  if (h === "cetak") siapkanCetak();
 }
 document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => tampilHalaman(b.dataset.hal)));
 
@@ -800,7 +864,7 @@ $("btnArsip").addEventListener("click", async () => {
 
 // ---------- jurnal ----------
 const KOLOM_J = ["murid_id", "tanggal", "durasi_menit", "bentuk", "topik", "ringkasan", "kesepakatan",
-  "tindak_lanjut", "tenggat", "status", "rujuk", "catatan_privat"];
+  "tindak_lanjut", "tenggat", "status", "rujuk", "catatan_privat", "hasil_tl"];
 const LABEL_STATUS = { belum: "Belum", proses: "Proses", selesai: "Selesai" };
 
 function kartuJurnal(j, denganNama) {
@@ -813,6 +877,7 @@ function kartuJurnal(j, denganNama) {
     el("p", { text: potong(j.ringkasan, 160) }),
     j.tindak_lanjut ? el("p", { class: "tl" + (telat ? " telat" : ""),
       text: "Tindak lanjut: " + potong(j.tindak_lanjut, 110) + (j.tenggat ? ` (tenggat ${fmtTgl(j.tenggat)}${telat ? ", sudah lewat" : ""})` : "") }) : null,
+    j.hasil_tl ? el("p", { class: "tl", text: "Hasil: " + potong(j.hasil_tl, 110) }) : null,
     j.rujuk ? el("span", { class: "lencana", text: "Dirujuk ke " + j.rujuk }) : null);
 }
 
@@ -1345,6 +1410,190 @@ function renderAsesmen(rows) {
     p.append(tombolHapusIsian(a));
     w.append(p);
   }
+}
+
+// ---------- cetak lampiran Program Kerja ----------
+const LAMPIRAN = [
+  ["profil", "Identifikasi profil murid"],
+  ["nonkognitif", "Asesmen non kognitif"],
+  ["karir", "Rencana karir"],
+  ["kelompok", "Jurnal pendampingan rutin (kelompok)"],
+  ["individu", "Jurnal pendampingan individu"],
+  ["perkembangan", "Catatan perkembangan murid dan tindak lanjut"],
+  ["kehadiran", "Rekapan kehadiran bulanan (kelompok)"],
+];
+$("ctPilih").append(...LAMPIRAN.map(([k, t]) =>
+  el("label", { class: "cek" }, el("input", { type: "checkbox", value: k, checked: true }), el("span", { text: t }))));
+
+function tglPanjang(s) {
+  if (!s) return "";
+  const d = new Date(s + "T00:00:00");
+  return isNaN(d) ? s : d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+}
+function siapkanCetak() {
+  const p = periodeDefault();
+  if (!$("ct_tahun").value) { $("ct_tahun").value = p.t; $("ct_semester").value = p.s; }
+  if (!$("ct_tanggal").value) $("ct_tanggal").value = hariIni();
+}
+$("btnKeCetak").addEventListener("click", () => tampilHalaman("cetak"));
+$("btnKembaliCetak").addEventListener("click", () => tampilHalaman("pengaturan"));
+$("btnCetak").addEventListener("click", () => window.print());
+
+$("formCetak").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const o = {
+    tahun: $("ct_tahun").value.trim(), semester: $("ct_semester").value, tanggal: $("ct_tanggal").value,
+    pilih: [...$("ctPilih").querySelectorAll("input:checked")].map((x) => x.value),
+  };
+  if (!/^\d{4}\/\d{4}$/.test(o.tahun)) { toast("Tulis tahun ajaran seperti 2026/2027"); return; }
+  if (!o.pilih.length) { toast("Pilih minimal satu lampiran"); return; }
+  const btn = $("btnBuatCetak"); btn.disabled = true; btn.textContent = "Menyiapkan...";
+  try {
+    const d = await api("cetak.data", { tahun_ajaran: o.tahun, semester: o.semester });
+    renderCetakan(d, o);
+    $("cetakan").hidden = false; $("btnCetak").hidden = false;
+    $("btnCetak").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) { if (err.message) toast(err.message); }
+  finally { btn.disabled = false; btn.textContent = "Buat pratinjau"; }
+});
+
+function renderCetakan(d, o) {
+  const I = window.INSTRUMEN, p = d.pengaturan || {};
+  const murid = d.murid || [];
+  const ak = new Map((d.akademis || []).map((r) => [r.murid_id, r]));
+  const pr = new Map((d.profil || []).map((r) => [r.murid_id, r]));
+  const as = d.asesmen || [];
+  const blnDari = d.dari.slice(0, 7), blnSampai = d.sampai.slice(0, 7);
+  const riasec = (mid) => {
+    const a = as.find((x) => x.murid_id === mid && x.jenis === "riasec1" && x.periode === o.tahun)
+      || as.find((x) => x.murid_id === mid && x.jenis === "riasec1");
+    return a ? I.skorRiasec("riasec1", a.jawaban).kode : "";
+  };
+  const kompetensi = (mid) => as.find((x) => x.murid_id === mid && x.jenis === "kompetensi" && x.periode >= blnDari && x.periode <= blnSampai);
+  const gabung = (...x) => x.filter(Boolean).join("; ");
+
+  // peringatan data kop & tanda tangan yang kosong
+  const kurang = [["sekolah", "nama sekolah"], ["guru_wali", "nama guru wali"], ["kepala_sekolah", "kepala sekolah"], ["kota", "kota"]]
+    .filter(([k]) => !p[k]).map(([, t]) => t);
+  $("ctPeringatan").replaceChildren(...(kurang.length ? [el("div", { class: "peringatan", text: "Belum diisi di Pengaturan: " + kurang.join(", ") + ". Bagian itu akan tercetak kosong." })] : []));
+
+  const kepala = (judul, ekstra = []) => [
+    el("h2", { text: judul.toUpperCase() }),
+    el("table", { class: "ct-info" }, el("tbody", {}, ...[["Satuan pendidikan", p.sekolah], ["Tahun ajaran", o.tahun],
+      ["Semester", o.semester], ["Nama guru wali", p.guru_wali], ["Jumlah murid wali", murid.length + " orang"], ...ekstra]
+      .map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: ": " + (v || "") }))))),
+  ];
+  const ttd = () => el("div", { class: "ct-ttd" },
+    el("div", {}, el("p", { text: "Mengetahui," }), el("p", { text: "Kepala Sekolah" }),
+      el("p", { class: "ct-nama", text: p.kepala_sekolah || "......................................" }), el("p", { text: "NIP. " + (p.nip_kepala || "") })),
+    el("div", {}, el("p", { text: (p.kota || "...............") + ", " + tglPanjang(o.tanggal) }), el("p", { text: "Guru Wali" }),
+      el("p", { class: "ct-nama", text: p.guru_wali || "......................................" }), el("p", { text: "NIP. " + (p.nip_guru_wali || "") })));
+  const tabel = (kolom, baris, tengah = [0]) => {
+    const tb = el("tbody");
+    if (!baris.length) tb.append(el("tr", {}, el("td", { colspan: kolom.length, class: "ct-kosong", text: "Belum ada data pada periode ini." })));
+    baris.forEach((r) => tb.append(el("tr", {}, ...r.map((c, i) => el("td", { class: tengah.includes(i) ? "ct-no" : null, text: c == null ? "" : String(c) })))));
+    return el("table", { class: "ct-tabel" }, el("thead", {}, el("tr", {}, ...kolom.map((k) => el("th", { text: k })))), tb);
+  };
+
+  const ttl = (m) => [m.tempat_lahir, tglPanjang(m.tanggal_lahir)].filter(Boolean).join(", ");
+  const ortu = (n, k, s) => [n, k && "/ " + k].filter(Boolean).join(" ") + (s ? ` (${s})` : "");
+
+  const BUAT = {
+    profil: () => tabel(
+      ["No", "Nama", "Kelas", "L/P", "TTL", "Gol. darah", "Nama ayah / pekerjaan (status)", "Nama ibu / pekerjaan (status)",
+        "Jlh saudara", "Anak ke", "Jarak rumah ke sekolah", "Transportasi ke sekolah", "No HP", "No HP orang tua/wali"],
+      murid.map((m, i) => [i + 1, m.nama, m.kelas, m.jenis_kelamin, ttl(m), m.gol_darah,
+        ortu(m.nama_ayah, m.kerja_ayah, m.status_ayah), ortu(m.nama_ibu, m.kerja_ibu, m.status_ibu),
+        m.jumlah_saudara, m.anak_ke, m.jarak_rumah, m.transportasi, m.hp_siswa, [m.hp_ayah, m.hp_ibu].filter(Boolean).join(" / ")]),
+      [0, 2, 3, 5, 8, 9]),
+
+    nonkognitif: () => tabel(
+      ["No", "Nama murid", "Bakat/minat (RIASEC)", "Gaya belajar", "Kesulitan belajar", "Mapel paling mudah dipahami",
+        "Mapel paling sulit dipahami", "Mapel pilihan", "Guru mapel pilihan"],
+      murid.map((m, i) => {
+        const a = ak.get(m.id) || {}, f = pr.get(m.id) || {};
+        return [i + 1, m.nama, riasec(m.id), f.gaya_belajar, a.hambatan, m.mapel_disukai || a.mapel_kuat,
+          m.mapel_sulit || a.mapel_bantuan, m.mapel_pilihan, m.guru_mapel_pilihan];
+      }), [0, 2]),
+
+    karir: () => tabel(
+      ["No", "Nama", "Bakat/minat (RIASEC)", "Bidang profesi yang mendukung minat bakat", "Rencana karir (kuliah/bekerja)",
+        "Prodi yang dituju / sasaran dunia kerja", "Mapel pilihan pendukung rencana karir"],
+      murid.map((m, i) => {
+        const k = riasec(m.id);
+        return [i + 1, m.nama, k, k ? I.TIPE[k[0]].profesi : "", m.rencana_karir, m.prodi_tujuan || m.cita_cita, m.mapel_pilihan];
+      }), [0, 2]),
+
+    kelompok: () => tabel(
+      ["No.", "Tanggal pertemuan", "Kegiatan", "Rekomendasi tindak lanjut", "Keterangan"],
+      (d.pertemuan || []).map((x, i) => {
+        const k = x.kehadiran || [], h = k.filter((y) => y.status === "H").length;
+        return [i + 1, tglPanjang(x.tanggal), (x.aspek ? x.aspek + ": " : "") + x.kegiatan, x.rekomendasi,
+          gabung(x.keterangan, k.length ? `Hadir ${h} dari ${k.length} murid` : "")];
+      })),
+
+    individu: () => tabel(
+      ["No.", "Tanggal pertemuan", "Nama murid", "Topik atau masalah yang dibahas", "Rekomendasi tindak lanjut", "Hasil tindak lanjut"],
+      (d.jurnal || []).filter((j) => j.bentuk !== "Kelompok").map((j, i) => [i + 1, tglPanjang(j.tanggal), j.murid ? j.murid.nama : "",
+        j.topik + ": " + j.ringkasan, j.tindak_lanjut || j.kesepakatan,
+        j.hasil_tl || gabung("Status: " + (LABEL_STATUS[j.status] || j.status), j.rujuk && "dirujuk ke " + j.rujuk)])),
+
+    perkembangan: () => tabel(
+      ["No", "Nama murid", "Akademik", "Keterampilan", "Karakter", "Kompetensi", "Hasil", "Tindak lanjut"],
+      murid.map((m, i) => {
+        const a = ak.get(m.id) || {}, f = pr.get(m.id) || {};
+        const kar = f.karakter || {};
+        const karBaik = Object.keys(kar).filter((x) => kar[x] >= 3), karPerlu = Object.keys(kar).filter((x) => kar[x] <= 2);
+        const karakter = f.catatan_karakter || gabung(karBaik.length && "Baik: " + karBaik.join(", "), karPerlu.length && "Perlu dibina: " + karPerlu.join(", "));
+        const kp = kompetensi(m.id);
+        let komp = "";
+        if (kp) {
+          const s = I.skorKompetensi(kp.jawaban);
+          const kuat = s.filter((x) => x.rata >= 3.5).map((x) => x.nama), lemah = s.filter((x) => x.rata && x.rata < 2.5).map((x) => x.nama);
+          komp = gabung(kuat.length && "Kuat: " + kuat.join(", "), lemah.length && "Perlu ditingkatkan: " + lemah.join(", ")) || "Umumnya baik";
+        }
+        return [i + 1, m.nama,
+          gabung(a.mapel_kuat && "Kuat: " + a.mapel_kuat, a.mapel_bantuan && "Perlu bantuan: " + a.mapel_bantuan, a.hambatan && "Hambatan: " + a.hambatan),
+          gabung(f.bakat, f.ekskul && "Ekskul: " + f.ekskul, f.prestasi && "Prestasi: " + f.prestasi),
+          karakter, komp, f.kesimpulan, f.rekomendasi || a.tindak_lanjut];
+      })),
+
+    kehadiran: () => {
+      const bulan = [];
+      let [y, mo] = d.dari.split("-").map(Number);
+      for (let i = 0; i < 6; i++) { bulan.push(`${y}-${pad(mo)}`); if (++mo > 12) { mo = 1; y++; } }
+      const tb = el("tbody");
+      bulan.forEach((b) => {
+        const ps = (d.pertemuan || []).filter((x) => x.tanggal.startsWith(b));
+        const per = new Map(murid.map((m) => [m.id, { nama: m.nama, H: 0, n: 0 }]));
+        ps.forEach((x) => (x.kehadiran || []).forEach((k) => {
+          let r = per.get(k.murid_id);
+          if (!r) { r = { nama: (k.murid ? k.murid.nama : "?") + " (arsip)", H: 0, n: 0 }; per.set(k.murid_id, r); }
+          r.n++; if (k.status === "H") r.H++;
+        }));
+        const rows = [...per.values()];
+        const namaB = new Date(+b.slice(0, 4), +b.slice(5) - 1, 1).toLocaleDateString("id-ID", { month: "long" });
+        if (!rows.length) { tb.append(el("tr", {}, el("td", { text: namaB }), el("td", { class: "ct-no", text: String(ps.length) }), el("td", { colspan: 5, text: "-" }))); return; }
+        rows.forEach((r, i) => {
+          const tr = el("tr");
+          if (i === 0) tr.append(el("td", { rowspan: rows.length, text: namaB }), el("td", { rowspan: rows.length, class: "ct-no", text: String(ps.length) }));
+          tr.append(el("td", { class: "ct-no", text: String(i + 1) }), el("td", { text: r.nama }),
+            el("td", { class: "ct-no", text: ps.length ? String(r.H) : "-" }),
+            el("td", { class: "ct-no", text: ps.length ? String(r.n - r.H) : "-" }),
+            el("td", { class: "ct-no", text: r.n ? Math.round((r.H / r.n) * 100) + "%" : "-" }));
+          tb.append(tr);
+        });
+      });
+      return el("table", { class: "ct-tabel" }, el("thead", {}, el("tr", {},
+        ...["Bulan", "Jumlah pertemuan", "No", "Nama murid", "Jumlah kehadiran", "Jumlah ketidakhadiran", "Persentase kehadiran"].map((t) => el("th", { text: t })))), tb);
+    },
+  };
+
+  const w = $("cetakan"); w.replaceChildren();
+  LAMPIRAN.filter(([k]) => o.pilih.includes(k)).forEach(([k, judul]) => {
+    const ekstra = k === "perkembangan" ? [["Periode pemantauan", `Semester ${o.semester} (${tglPanjang(d.dari)} s.d. ${tglPanjang(d.sampai)})`]] : [];
+    w.append(el("section", { class: "ct-lembar" }, ...kepala(judul, ekstra), BUAT[k](), ttd()));
+  });
 }
 
 // ---------- pengaturan ----------
