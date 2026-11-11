@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Portal Murid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --kertas:#EEF1F5; --putih:#fff; --tinta:#1E2A44; --redup:#5C6780; --garis:#C9D1DF;
+  --stabilo:#F6D74A; --teal:#1F7A74; --merah:#C0392F;
+  --serif:'Bitter',Georgia,'Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--kertas);color:var(--tinta);font:16px/1.5 var(--sans);-webkit-text-size-adjust:100%;min-height:100vh;
+  background-image:linear-gradient(var(--garis) 1px,transparent 1px);background-size:100% 28px}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--serif);margin:0}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.redup{color:var(--redup)} .kecil{font-size:14px}
+header{background:var(--tinta);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
+header h1{font-size:18px}
+main{max-width:640px;margin:0 auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}
+.judul{display:inline-block;background:var(--stabilo);padding:2px 10px;transform:rotate(-1deg);margin:0 0 4px;font-size:22px}
+h2.bagian{font-size:18px;margin:24px 0 10px}
+.btn{border:2px solid var(--tinta);background:var(--putih);padding:12px 16px;border-radius:6px;font-weight:700;box-shadow:2px 2px 0 var(--tinta);min-height:48px;width:100%}
+.btn:active{transform:translate(2px,2px);box-shadow:none}
+.btn.utama{background:var(--teal);color:#fff}
+.btn[disabled]{opacity:.55}
+.kartu{display:block;width:100%;text-align:left;background:var(--putih);border:2px solid var(--tinta);border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:3px 3px 0 var(--tinta)}
+.kartu b{display:block;font-size:17px}
+.kartu .status{display:inline-block;margin-top:8px;font-size:13px;font-weight:700;padding:2px 10px;border-radius:99px;border:1.5px solid var(--merah);color:var(--merah);background:#FBE3E1}
+.kartu .status.ok{border-color:var(--teal);color:var(--teal);background:#D6EEEC}
+.panel{background:var(--putih);border:2px solid var(--tinta);border-radius:8px;padding:14px;margin-bottom:12px}
+.panel p{margin:6px 0 0}
+.kode{font-family:var(--serif);font-size:28px;letter-spacing:4px}
+.batang{display:grid;grid-template-columns:28px 1fr 28px;gap:8px;align-items:center;font-size:14px;margin-top:6px}
+.batang i{display:block;height:12px;background:var(--stabilo);border:1.5px solid var(--tinta);border-radius:3px}
+.kembali{border:0;background:none;color:var(--teal);font-weight:700;padding:4px 0;min-height:44px}
+.petunjuk{background:#FFF6D6;border:2px solid var(--stabilo);border-radius:6px;padding:10px 12px;margin:10px 0 16px;font-size:15px}
+.pilih{display:flex;gap:12px;align-items:flex-start;background:var(--putih);border:2px solid var(--garis);border-radius:8px;padding:12px;margin-bottom:8px;font-size:16px;cursor:pointer}
+.pilih input{width:24px;height:24px;flex:0 0 24px;margin:0;accent-color:var(--teal)}
+.pilih:has(input:checked){border-color:var(--teal);background:#EAF6F5}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip{border:2px solid var(--tinta);background:#fff;border-radius:8px;padding:12px 8px;font-weight:600;min-height:52px}
+.chip[aria-pressed=true]{background:var(--stabilo)}
+.butir{background:var(--putih);border:2px solid var(--garis);border-radius:8px;padding:12px;margin-bottom:10px}
+.butir p{margin:0 0 10px}
+.skala{display:grid;gap:6px}
+.skala.empat{grid-template-columns:repeat(4,1fr)}
+.skala.dua{grid-template-columns:1fr 1fr}
+.skala label{position:relative;margin:0}
+.skala input{position:absolute;opacity:0;width:1px;height:1px}
+.skala span{display:block;text-align:center;border:2px solid var(--tinta);border-radius:6px;padding:10px 0;font-weight:700;background:#fff}
+.skala input:checked+span{background:var(--stabilo)}
+.skala input:focus-visible+span{outline:3px solid var(--teal);outline-offset:2px}
+h3.dim{font-size:16px;margin:18px 0 8px}
+label.tanya{display:block;font-weight:600;margin:14px 0 6px}
+textarea{width:100%;border:2px solid var(--tinta);border-radius:6px;background:var(--putih);padding:10px 12px;min-height:90px;font-size:16px;resize:vertical}
+.bawah{position:sticky;bottom:0;background:var(--kertas);padding:12px 0 calc(12px + env(safe-area-inset-bottom));margin-top:16px;border-top:1px solid var(--garis)}
+.hitung{text-align:center;font-weight:700;margin-bottom:8px}
+.galat{color:var(--merah);font-weight:600}
+.kosong{text-align:center;color:var(--redup);padding:28px 12px;background:var(--putih);border:2px dashed var(--garis);border-radius:8px}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tinta);color:#fff;padding:12px 18px;border-radius:6px;font-size:15px;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<header><h1>Portal Murid · Guru Wali</h1></header>
+<main id="utama">
+  <p id="memuat" class="redup">Memuat...</p>
+  <div id="pesanGalat" class="kosong" hidden></div>
+
+  <section id="beranda" hidden>
+    <h1 class="judul" id="sapa"></h1>
+    <p class="redup" id="kelas" style="margin:4px 0 0"></p>
+    <p class="redup kecil">Simpan tautan halaman ini. Jangan bagikan ke teman, karena tautan ini khusus untukmu.</p>
+    <h2 class="bagian">Yang perlu diisi</h2>
+    <div id="daftarIsian"></div>
+    <h2 class="bagian">Hasilku</h2>
+    <div id="hasil"></div>
+  </section>
+
+  <section id="isian" hidden>
+    <button class="kembali" id="btnKembali" type="button">‹ Kembali</button>
+    <h1 class="judul" id="fJudul"></h1>
+    <p class="redup" id="fPeriode" style="margin:4px 0 0"></p>
+    <div class="petunjuk" id="fPetunjuk"></div>
+    <form id="formIsian" novalidate>
+      <div id="fIsi"></div>
+      <div class="bawah">
+        <div class="hitung" id="fHitung"></div>
+        <p class="galat" id="fGalat" role="alert" hidden></p>
+        <button class="btn utama" id="btnKirim">Kirim jawaban</button>
+      </div>
+    </form>
+  </section>
+</main>
+<div id="toast" hidden role="status"></div>
+
+<script src="instrumen.js"></script>
+<script>
+// ====== GANTI dengan alamat fungsi portal Anda ======
+const API_URL = "https://mhdswzvwvscsshbqbbzq.supabase.co/functions/v1/portal_murid";
+// ====================================================
+
+const $ = (id) => document.getElementById(id);
+const I = window.INSTRUMEN;
+const SIMPAN = "jgw_portal";
+let kode = "", data = null, jenisAktif = null, berubah = false;
+
+function el(tag, props = {}, ...anak) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of anak.flat()) if (c != null && c !== false) e.append(c instanceof Node ? c : String(c));
+  return e;
+}
+function toast(t) {
+  const x = $("toast"); x.textContent = t; x.hidden = false;
+  clearTimeout(toast.w); toast.w = setTimeout(() => (x.hidden = true), 3000);
+}
+const fmtTgl = (s) => new Date(s).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+function namaBulan(p) { const [y, m] = p.split("-"); return new Date(+y, +m - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" }); }
+const periodeUntuk = (jenis) => (I.INFO[jenis].periode === "tahun" ? data.periode.tahun : data.periode.bulan);
+const labelPeriode = (jenis) => (I.INFO[jenis].periode === "tahun" ? "Tahun ajaran " + data.periode.tahun : "Bulan " + namaBulan(data.periode.bulan));
+const isianSekarang = (jenis) => data.asesmen.find((a) => a.jenis === jenis && a.periode === periodeUntuk(jenis));
+const terbaru = (jenis) => data.asesmen.find((a) => a.jenis === jenis);
+
+async function api(aksi, isi = {}) {
+  let res;
+  try {
+    res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aksi, kode, ...isi }) });
+  } catch (e) { throw new Error("Tidak bisa terhubung. Periksa koneksi internetmu."); }
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(j.error || "Terjadi kesalahan"); e.status = res.status; throw e; }
+  return j;
+}
+
+function galatBesar(t) { $("memuat").hidden = true; $("beranda").hidden = true; $("isian").hidden = true; $("pesanGalat").textContent = t; $("pesanGalat").hidden = false; }
+
+// ---------- beranda ----------
+function renderBeranda() {
+  $("sapa").textContent = "Halo, " + data.murid.nama;
+  $("kelas").textContent = data.murid.kelas ? "Kelas " + data.murid.kelas : "";
+  $("daftarIsian").replaceChildren(...["riasec1", "riasec2", "kompetensi", "refleksi"].map((jenis) => {
+    const a = isianSekarang(jenis);
+    return el("button", { class: "kartu", type: "button", onclick: () => bukaIsian(jenis) },
+      el("b", { text: I.INFO[jenis].judul }),
+      el("span", { class: "redup kecil", text: I.INFO[jenis].singkat + " · " + labelPeriode(jenis) }), el("br"),
+      el("span", { class: "status" + (a ? " ok" : ""), text: a ? "Sudah diisi " + fmtTgl(a.diisi_pada) + " · ketuk untuk mengubah" : "Belum diisi" }));
+  }));
+  renderHasil();
+}
+
+function panelRiasec(jenis, judul) {
+  const a = terbaru(jenis);
+  if (!a) return null;
+  const h = I.skorRiasec(jenis, a.jawaban);
+  const p = el("div", { class: "panel" }, el("b", { text: judul }), el("div", { class: "kode", text: h.kode || "-" }));
+  I.URUT.forEach((t) => p.append(el("div", { class: "batang" }, el("span", { text: t }),
+    el("i", { style: `width:${Math.max(4, (h.skor[t] / h.maks) * 100)}%` }), el("span", { text: String(h.skor[t]) }))));
+  h.kode.split("").forEach((t) => p.append(el("p", { class: "kecil" }, el("b", { text: I.TIPE[t].nama + ": " }), I.TIPE[t].profesi)));
+  return p;
+}
+function renderHasil() {
+  const w = $("hasil"); w.replaceChildren();
+  const r1 = panelRiasec("riasec1", "Minatku (RIASEC 1)");
+  const r2 = panelRiasec("riasec2", "Kemampuanku (RIASEC 2)");
+  if (r1) w.append(r1); if (r2) w.append(r2);
+  const k = terbaru("kompetensi");
+  if (k) {
+    const p = el("div", { class: "panel" }, el("b", { text: "Kompetensiku (" + namaBulan(k.periode) + ")" }));
+    I.skorKompetensi(k.jawaban).forEach((d) => p.append(el("p", { class: "kecil", text: d.nama + ": " + d.label })));
+    w.append(p);
+  }
+  const ref = data.asesmen.filter((a) => a.jenis === "refleksi").slice(0, 6);
+  if (ref.length) {
+    const p = el("div", { class: "panel" }, el("b", { text: "Refleksi karakterku" }));
+    ref.forEach((a) => {
+      const s = I.skorRefleksi(a.jawaban);
+      p.append(el("p", { class: "kecil", text: `${namaBulan(a.periode)}: ${s.ya.length} dari 6 sudah baik` + (s.belum.length ? ` · perlu ditingkatkan: ${s.belum.join(", ")}` : "") }));
+    });
+    w.append(p);
+  }
+  if (!w.children.length) w.append(el("div", { class: "kosong", text: "Hasilmu akan muncul di sini setelah kamu mengisi." }));
+}
+
+// ---------- formulir ----------
+function bukaIsian(jenis) {
+  jenisAktif = jenis; berubah = false;
+  const a = isianSekarang(jenis);
+  $("fJudul").textContent = I.INFO[jenis].judul;
+  $("fPeriode").textContent = labelPeriode(jenis) + (a ? " · kamu sudah mengisi, jawaban lama akan diganti" : "");
+  $("fGalat").hidden = true;
+  const isi = $("fIsi"); isi.replaceChildren();
+  ({ riasec1: formRiasec1, riasec2: formRiasec2, kompetensi: formKompetensi, refleksi: formRefleksi })[jenis](isi, a);
+  perbaruiHitung();
+  $("beranda").hidden = true; $("isian").hidden = false;
+  window.scrollTo(0, 0);
+  try { history.pushState({ isian: 1 }, ""); } catch (e) {}
+}
+function tandai() { berubah = true; perbaruiHitung(); }
+$("fIsi").addEventListener("change", tandai);
+$("fIsi").addEventListener("input", tandai);
+function tutupIsian() { $("isian").hidden = true; $("beranda").hidden = false; jenisAktif = null; window.scrollTo(0, 0); }
+$("btnKembali").addEventListener("click", () => {
+  if (berubah && !confirm("Jawabanmu belum dikirim. Tetap kembali?")) return;
+  if (history.state && history.state.isian) history.back(); else tutupIsian();
+});
+window.addEventListener("popstate", () => { if (!$("isian").hidden) tutupIsian(); });
+
+function formRiasec1(w, a) {
+  $("fPetunjuk").textContent = "Centang semua pernyataan yang sesuai dengan dirimu. Ingat, ini tentang hal yang kamu SUKA, bukan yang kamu BISA. Tidak ada jawaban benar atau salah.";
+  const pilih = new Set(a ? a.jawaban.pilih : []);
+  I.RIASEC1.forEach((t, i) => {
+    const inp = el("input", { type: "checkbox", value: i + 1 });
+    inp.checked = pilih.has(i + 1);
+    w.append(el("label", { class: "pilih" }, inp, el("span", { text: t })));
+  });
+}
+function formRiasec2(w, a) {
+  $("fPetunjuk").textContent = "Pilih tepat 8 hal yang paling bisa kamu lakukan tanpa kesulitan.";
+  const pilih = new Set(a ? a.jawaban.pilih : []);
+  const g = el("div", { class: "chips" });
+  I.RIASEC2.forEach((t, i) => {
+    const b = el("button", { type: "button", class: "chip", "data-n": i + 1, "aria-pressed": pilih.has(i + 1) ? "true" : "false", text: t });
+    b.addEventListener("click", () => {
+      const on = b.getAttribute("aria-pressed") === "true";
+      if (!on && g.querySelectorAll("[aria-pressed=true]").length >= 8) { toast("Sudah 8. Batalkan satu dulu jika ingin mengganti."); return; }
+      b.setAttribute("aria-pressed", on ? "false" : "true"); tandai();
+    });
+    g.append(b);
+  });
+  w.append(g);
+}
+function skalaRadio(nama, opsi, nilai, kelas) {
+  const s = el("div", { class: "skala " + kelas, role: "radiogroup" });
+  opsi.forEach(([v, t]) => {
+    const inp = el("input", { type: "radio", name: nama, value: String(v) });
+    inp.checked = nilai !== undefined && String(nilai) === String(v);
+    s.append(el("label", {}, inp, el("span", { text: t })));
+  });
+  return s;
+}
+function tanyaRefleksi(w, daftar, catatan) {
+  w.append(el("h3", { class: "dim", text: "Refleksi singkat" }));
+  daftar.forEach((q, i) => {
+    const id = "q" + (i + 1);
+    const ta = el("textarea", { id, rows: 3 });
+    ta.value = (catatan && catatan[String(i + 1)]) || "";
+    w.append(el("label", { class: "tanya", for: id, text: q }), ta);
+  });
+}
+function formKompetensi(w, a) {
+  $("fPetunjuk").textContent = "Nilai dirimu selama satu bulan terakhir. SB = selalu dan konsisten, B = sering tapi kadang perlu diingatkan, C = kadang-kadang, K = jarang. Jawabanmu rahasia, hanya untuk pendampingan.";
+  const n = a ? a.jawaban.nilai : {};
+  I.DIMENSI.forEach(([nama, butir], i) => {
+    w.append(el("h3", { class: "dim", text: `${i + 1}. ${nama}` }));
+    butir.forEach((t, j) => {
+      const id = `${i + 1}.${j + 1}`;
+      w.append(el("div", { class: "butir", "data-id": id }, el("p", { text: t }),
+        skalaRadio("k" + id, I.SKALA.map(([v, s]) => [v, s]), n[id], "empat")));
+    });
+  });
+  tanyaRefleksi(w, I.PERTANYAAN.kompetensi, a && a.catatan);
+}
+function formRefleksi(w, a) {
+  $("fPetunjuk").textContent = "Jawab dengan jujur berdasarkan pengalamanmu selama satu bulan terakhir.";
+  const j = a ? a.jawaban.jawab : {};
+  I.REFLEKSI.forEach((t, i) => {
+    const v = j[i + 1];
+    w.append(el("div", { class: "butir", "data-id": String(i + 1) }, el("p", { text: `${i + 1}. ${t}` }),
+      skalaRadio("r" + (i + 1), [["ya", "Ya"], ["tidak", "Tidak"]], v === true ? "ya" : v === false ? "tidak" : undefined, "dua")));
+  });
+  tanyaRefleksi(w, I.PERTANYAAN.refleksi, a && a.catatan);
+}
+
+function kumpulkan() {
+  const w = $("fIsi");
+  if (jenisAktif === "riasec1") return { pilih: [...w.querySelectorAll("input:checked")].map((x) => +x.value) };
+  if (jenisAktif === "riasec2") return { pilih: [...w.querySelectorAll("[aria-pressed=true]")].map((x) => +x.dataset.n) };
+  if (jenisAktif === "kompetensi") {
+    const nilai = {};
+    w.querySelectorAll(".butir").forEach((b) => { const c = b.querySelector("input:checked"); if (c) nilai[b.dataset.id] = +c.value; });
+    return { nilai };
+  }
+  const jawab = {};
+  w.querySelectorAll(".butir").forEach((b) => { const c = b.querySelector("input:checked"); if (c) jawab[b.dataset.id] = c.value === "ya"; });
+  return { jawab };
+}
+function catatanRefleksi() {
+  const o = {};
+  [1, 2, 3].forEach((i) => { const t = $("q" + i); if (t && t.value.trim()) o[i] = t.value.trim(); });
+  return o;
+}
+function perbaruiHitung() {
+  if (!jenisAktif) return;
+  const j = kumpulkan();
+  let teks = "", siap = true;
+  if (jenisAktif === "riasec1") { teks = `${j.pilih.length} dari 42 dicentang`; siap = j.pilih.length > 0; }
+  else if (jenisAktif === "riasec2") { teks = `${j.pilih.length} dari 8 dipilih`; siap = j.pilih.length === 8; }
+  else if (jenisAktif === "kompetensi") { const n = Object.keys(j.nilai).length; teks = `${n} dari 16 dinilai`; siap = n === 16; }
+  else { const n = Object.keys(j.jawab).length; teks = `${n} dari 6 dijawab`; siap = n === 6; }
+  $("fHitung").textContent = teks;
+  $("btnKirim").disabled = !siap;
+}
+
+$("formIsian").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("btnKirim"); btn.disabled = true; btn.textContent = "Mengirim...";
+  $("fGalat").hidden = true;
+  try {
+    const isi = { jenis: jenisAktif, jawaban: kumpulkan() };
+    if (jenisAktif === "kompetensi" || jenisAktif === "refleksi") isi.catatan = catatanRefleksi();
+    const r = (await api("portal.simpan", isi)).asesmen;
+    data.asesmen = [r, ...data.asesmen.filter((a) => !(a.jenis === r.jenis && a.periode === r.periode))];
+    berubah = false;
+    renderBeranda();
+    if (history.state && history.state.isian) history.back(); else tutupIsian();
+    toast("Terima kasih, jawabanmu tersimpan.");
+  } catch (err) {
+    $("fGalat").textContent = err.message; $("fGalat").hidden = false;
+    if (err.status === 401) galatBesar(err.message);
+  } finally { btn.textContent = "Kirim jawaban"; perbaruiHitung(); }
+});
+
+// ---------- mulai ----------
+(async () => {
+  const m = location.hash.match(/k=([A-Za-z0-9_-]+)/);
+  if (m) { kode = m[1]; try { localStorage.setItem(SIMPAN, kode); } catch (e) {} }
+  else { try { kode = localStorage.getItem(SIMPAN) || ""; } catch (e) {} }
+  if (!kode) return galatBesar("Tautan tidak lengkap. Buka tautan yang dikirim guru walimu.");
+  try {
+    data = await api("portal.ambil");
+    data.asesmen = data.asesmen || [];
+    $("memuat").hidden = true; $("beranda").hidden = false;
+    renderBeranda();
+  } catch (err) {
+    if (err.status === 401) { try { localStorage.removeItem(SIMPAN); } catch (e) {} }
+    galatBesar(err.message);
+  }
+})();
+</script>
+</body>
+</html>
