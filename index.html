@@ -90,7 +90,7 @@ nav button[aria-current=page]{color:var(--tinta);box-shadow:inset 0 -4px 0 var(-
 .fab{position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:5}
 
 /* detail */
-.kembali{border:0;background:none;color:var(--teal);font-weight:700;padding:4px 0;min-height:44px}
+.kembali{display:block;border:0;background:none;color:var(--teal);font-weight:700;padding:4px 0;min-height:44px}
 #dNama{font-size:22px}
 #dSub{margin:2px 0 14px}
 .baris-alat{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
@@ -138,6 +138,13 @@ a{color:var(--teal);font-weight:600}
 .batang i{display:block;height:10px;background:var(--stabilo);border:1.5px solid var(--tinta);border-radius:3px}
 .panel p{margin:6px 0 0}
 a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--tinta)}
+
+/* isi massal */
+.ms-baris{background:var(--putih);border:2px solid var(--garis);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.ms-baris.ubah{border-color:var(--teal)}
+.ms-baris label{font-size:15px}
+.ms-saran{font-size:13px;color:var(--redup);margin:6px 0 0}
+.ms-simpan{position:sticky;bottom:calc(56px + env(safe-area-inset-bottom));background:var(--kertas);padding:10px 0;border-top:1px solid var(--garis);margin-top:12px}
 
 /* cetak lampiran */
 label.cek{display:flex;gap:10px;align-items:center;padding:8px 0;font-weight:500;font-size:15px;margin:0}
@@ -214,7 +221,10 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
         <button class="btn" id="btnImpor" type="button" style="white-space:nowrap">Impor Excel</button>
         <input id="fileImpor" type="file" accept=".xlsx,.xls,.csv" hidden>
       </div>
-      <button class="btn lebar" id="btnTautanMassal" type="button">Tautan portal murid</button>
+      <div class="dua" style="gap:10px;margin-bottom:12px">
+        <button class="btn" id="btnTautanMassal" type="button">Tautan portal</button>
+        <button class="btn" id="btnKeMassal" type="button">Isi massal</button>
+      </div>
       <div id="daftar"></div>
       <button class="btn utama fab" id="btnTambah">+ Tambah murid</button>
     </section>
@@ -299,6 +309,26 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
       </div>
     </section>
 
+    <!-- ISI MASSAL -->
+    <section id="hal-massal" hidden>
+      <button class="kembali" id="btnKembaliMassal" type="button">‹ Daftar murid</button>
+      <h2 class="judul" style="font-size:20px">Isi massal</h2>
+      <p class="sub">Isi satu kolom untuk semua murid sekaligus, lalu simpan sekali.</p>
+      <div class="baris"><label for="ms_kolom">Kolom</label><select id="ms_kolom"></select></div>
+      <div class="dua" id="msPeriode">
+        <div class="baris"><label for="ms_tahun">Tahun ajaran</label><input id="ms_tahun" placeholder="2026/2027"></div>
+        <div class="baris"><label for="ms_semester">Semester</label><select id="ms_semester"><option>Ganjil</option><option>Genap</option></select></div>
+      </div>
+      <div class="panel">
+        <button class="btn lebar" id="btnMsOtomatis" type="button" style="margin-bottom:10px">Isi otomatis yang kosong</button>
+        <p class="redup kecil" id="msInfoOtomatis" style="margin:0 0 10px"></p>
+        <div class="alat" style="margin:0"><input id="msSama" placeholder="Teks untuk semua yang kosong" aria-label="Teks untuk semua yang kosong">
+          <button class="btn" type="button" id="btnMsSama">Terapkan</button></div>
+      </div>
+      <div id="msDaftar"></div>
+      <div class="ms-simpan"><button class="btn utama lebar" id="btnMsSimpan" type="button" style="margin:0" disabled>Simpan</button></div>
+    </section>
+
     <!-- PENDAMPINGAN KELOMPOK -->
     <section id="hal-kelompok" hidden>
       <div class="tab" id="kTab">
@@ -367,6 +397,7 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
             <div class="baris penuh"><label for="ct_tanggal">Tanggal tanda tangan</label><input id="ct_tanggal" type="date" required></div>
           </div>
           <fieldset><legend>Lampiran yang dicetak</legend><div id="ctPilih"></div></fieldset>
+          <label class="cek" style="margin-bottom:10px"><input type="checkbox" id="ct_lewati" checked><span>Rekap kehadiran: lewati bulan tanpa pertemuan</span></label>
           <button class="btn utama lebar" id="btnBuatCetak">Buat pratinjau</button>
         </form>
         <div id="ctPeringatan"></div>
@@ -509,6 +540,7 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
 
 <datalist id="dl-agama"><option>Islam</option><option>Kristen</option><option>Katolik</option><option>Hindu</option><option>Buddha</option><option>Konghucu</option></datalist>
 <datalist id="dl-goldar"><option>A</option><option>B</option><option>AB</option><option>O</option></datalist>
+<datalist id="dl-rencana"><option>Kuliah</option><option>Bekerja</option><option>Wirausaha</option><option>Belum menentukan</option></datalist>
 <datalist id="dl-gaya"><option>Visual</option><option>Auditori</option><option>Kinestetik</option></datalist>
 <datalist id="dl-mapel">
   <option>Pendidikan Agama dan Budi Pekerti</option><option>Pendidikan Pancasila</option><option>Bahasa Indonesia</option>
@@ -690,7 +722,7 @@ const KOLOM_PER = {
 };
 
 // ---------- tampilan ----------
-const HAL = ["murid", "detail", "kelompok", "jurnal", "pengaturan", "cetak"];
+const HAL = ["murid", "detail", "massal", "kelompok", "jurnal", "pengaturan", "cetak"];
 function keLogin(pesan = "") {
   simpanToken(null); detail = null;
   document.querySelectorAll("dialog[open]").forEach((d) => d.close());
@@ -705,7 +737,7 @@ async function keApp() {
 }
 function tampilHalaman(h) {
   HAL.forEach((x) => ($("hal-" + x).hidden = x !== h));
-  const n = h === "detail" ? "murid" : h === "cetak" ? "pengaturan" : h;
+  const n = h === "detail" || h === "massal" ? "murid" : h === "cetak" ? "pengaturan" : h;
   document.querySelectorAll("nav button").forEach((b) => {
     if (b.dataset.hal === n) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
@@ -714,6 +746,7 @@ function tampilHalaman(h) {
   if (h === "jurnal") muatJurnal();
   if (h === "kelompok") muatKelompok();
   if (h === "cetak") siapkanCetak();
+  if (h === "massal") siapkanMassal();
 }
 document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => tampilHalaman(b.dataset.hal)));
 
@@ -1364,6 +1397,16 @@ function tambahCatatan(p, jenis, catatan) {
 function renderAsesmen(rows) {
   const I = window.INSTRUMEN, w = $("hasilAsesmen"); w.replaceChildren();
   if (!rows.length) { w.append(kosong("Murid ini belum mengisi instrumen apa pun. Kirim tautan portal agar ia bisa mengisi.")); return; }
+  const ddRow = rows.find((r) => r.jenis === "datadiri");
+  if (ddRow) {
+    const isi = (ddRow.jawaban && ddRow.jawaban.isi) || {};
+    const dl = el("dl", { class: "info", style: "margin-top:8px" });
+    I.DATADIRI.forEach(([k, label]) => { if (isi[k]) dl.append(el("dt", { text: label }), el("dd", { text: isi[k] })); });
+    w.append(el("div", { class: "panel" }, el("b", { text: "Data diri dari murid · " + ddRow.periode }), dl,
+      el("p", { class: "kecil redup", text: "Diisi " + fmtWaktu(ddRow.diisi_pada) + ". Saat mencetak, kolom lampiran yang kosong otomatis memakai data ini." }),
+      el("button", { class: "btn lebar", style: "margin:10px 0 0", type: "button", text: "Salin ke data murid (yang masih kosong saja)", onclick: () => terapkanDataDiri(isi) }),
+      tombolHapusIsian(ddRow)));
+  }
   const kode = {};
   ["riasec1", "riasec2"].forEach((j) => {
     const a = rows.find((r) => r.jenis === j); if (!a) return;
@@ -1412,6 +1455,31 @@ function renderAsesmen(rows) {
   }
 }
 
+// ---------- helper: data diri murid, refleksi, data janggal ----------
+function cariDataDiri(as, mid, tahun) {
+  const a = as.find((x) => x.murid_id === mid && x.jenis === "datadiri" && x.periode === tahun)
+    || as.find((x) => x.murid_id === mid && x.jenis === "datadiri");
+  const isi = (a && a.jawaban && a.jawaban.isi) || {};
+  if (isi.gol_darah === "Tidak tahu") { const c = { ...isi }; delete c.gol_darah; return c; }
+  return isi;
+}
+function saudaraDari(s) { const m = /dari\s*(\d+)/i.exec(String(s || "")); return m && +m[1] > 0 ? m[1] : ""; }
+function teksRefleksi(a) {
+  if (!a) return "";
+  const s = INSTRUMEN.skorRefleksi(a.jawaban);
+  return [s.ya.length && "Baik: " + s.ya.join(", "), s.belum.length && "Perlu ditingkatkan: " + s.belum.join(", ")].filter(Boolean).join("; ");
+}
+function cekDataJanggal(m) {
+  const masalah = [];
+  if (m.tanggal_lahir) {
+    const umur = new Date().getFullYear() - +m.tanggal_lahir.slice(0, 4);
+    if (umur < 12 || umur > 22) masalah.push("tahun lahir " + m.tanggal_lahir.slice(0, 4));
+  }
+  const a = /(\d+)\D+dari\s*(\d+)/i.exec(String(m.anak_ke || ""));
+  if (a && (+a[2] === 0 || +a[1] > +a[2])) masalah.push(`anak ke ${a[1]} dari ${a[2]}`);
+  return masalah;
+}
+
 // ---------- cetak lampiran Program Kerja ----------
 const LAMPIRAN = [
   ["profil", "Identifikasi profil murid"],
@@ -1444,6 +1512,7 @@ $("formCetak").addEventListener("submit", async (e) => {
   const o = {
     tahun: $("ct_tahun").value.trim(), semester: $("ct_semester").value, tanggal: $("ct_tanggal").value,
     pilih: [...$("ctPilih").querySelectorAll("input:checked")].map((x) => x.value),
+    lewati: $("ct_lewati").checked,
   };
   if (!/^\d{4}\/\d{4}$/.test(o.tahun)) { toast("Tulis tahun ajaran seperti 2026/2027"); return; }
   if (!o.pilih.length) { toast("Pilih minimal satu lampiran"); return; }
@@ -1470,12 +1539,17 @@ function renderCetakan(d, o) {
     return a ? I.skorRiasec("riasec1", a.jawaban).kode : "";
   };
   const kompetensi = (mid) => as.find((x) => x.murid_id === mid && x.jenis === "kompetensi" && x.periode >= blnDari && x.periode <= blnSampai);
+  const refleksi = (mid) => as.find((x) => x.murid_id === mid && x.jenis === "refleksi" && x.periode >= blnDari && x.periode <= blnSampai);
+  const dd = new Map(murid.map((m) => [m.id, cariDataDiri(as, m.id, o.tahun)]));
   const gabung = (...x) => x.filter(Boolean).join("; ");
 
   // peringatan data kop & tanda tangan yang kosong
   const kurang = [["sekolah", "nama sekolah"], ["guru_wali", "nama guru wali"], ["kepala_sekolah", "kepala sekolah"], ["kota", "kota"]]
     .filter(([k]) => !p[k]).map(([, t]) => t);
-  $("ctPeringatan").replaceChildren(...(kurang.length ? [el("div", { class: "peringatan", text: "Belum diisi di Pengaturan: " + kurang.join(", ") + ". Bagian itu akan tercetak kosong." })] : []));
+  const janggal = murid.map((m) => [m.nama, cekDataJanggal(m)]).filter(([, x]) => x.length);
+  $("ctPeringatan").replaceChildren(
+    ...(kurang.length ? [el("div", { class: "peringatan", text: "Belum diisi di Pengaturan: " + kurang.join(", ") + ". Bagian itu akan tercetak kosong." })] : []),
+    ...(janggal.length ? [el("div", { class: "peringatan", text: "Periksa data yang tampaknya salah ketik: " + janggal.map(([n, x]) => `${n} (${x.join(", ")})`).join("; ") + "." })] : []));
 
   const kepala = (judul, ekstra = []) => [
     el("h2", { text: judul.toUpperCase() }),
@@ -1502,26 +1576,28 @@ function renderCetakan(d, o) {
     profil: () => tabel(
       ["No", "Nama", "Kelas", "L/P", "TTL", "Gol. darah", "Nama ayah / pekerjaan (status)", "Nama ibu / pekerjaan (status)",
         "Jlh saudara", "Anak ke", "Jarak rumah ke sekolah", "Transportasi ke sekolah", "No HP", "No HP orang tua/wali"],
-      murid.map((m, i) => [i + 1, m.nama, m.kelas, m.jenis_kelamin, ttl(m), m.gol_darah,
+      murid.map((m, i) => [i + 1, m.nama, m.kelas, m.jenis_kelamin, ttl(m), m.gol_darah || dd.get(m.id).gol_darah,
         ortu(m.nama_ayah, m.kerja_ayah, m.status_ayah), ortu(m.nama_ibu, m.kerja_ibu, m.status_ibu),
-        m.jumlah_saudara, m.anak_ke, m.jarak_rumah, m.transportasi, m.hp_siswa, [m.hp_ayah, m.hp_ibu].filter(Boolean).join(" / ")]),
+        m.jumlah_saudara || dd.get(m.id).jumlah_saudara || saudaraDari(m.anak_ke), m.anak_ke, m.jarak_rumah, m.transportasi, m.hp_siswa, [m.hp_ayah, m.hp_ibu].filter(Boolean).join(" / ")]),
       [0, 2, 3, 5, 8, 9]),
 
     nonkognitif: () => tabel(
       ["No", "Nama murid", "Bakat/minat (RIASEC)", "Gaya belajar", "Kesulitan belajar", "Mapel paling mudah dipahami",
         "Mapel paling sulit dipahami", "Mapel pilihan", "Guru mapel pilihan"],
       murid.map((m, i) => {
-        const a = ak.get(m.id) || {}, f = pr.get(m.id) || {};
-        return [i + 1, m.nama, riasec(m.id), f.gaya_belajar, a.hambatan, m.mapel_disukai || a.mapel_kuat,
-          m.mapel_sulit || a.mapel_bantuan, m.mapel_pilihan, m.guru_mapel_pilihan];
+        const a = ak.get(m.id) || {}, f = pr.get(m.id) || {}, x = dd.get(m.id);
+        return [i + 1, m.nama, riasec(m.id), f.gaya_belajar || x.gaya_belajar, a.hambatan || x.kesulitan_belajar,
+          m.mapel_disukai || a.mapel_kuat || x.mapel_mudah, m.mapel_sulit || a.mapel_bantuan || x.mapel_sulit,
+          m.mapel_pilihan || x.mapel_pilihan, m.guru_mapel_pilihan || x.guru_mapel_pilihan];
       }), [0, 2]),
 
     karir: () => tabel(
       ["No", "Nama", "Bakat/minat (RIASEC)", "Bidang profesi yang mendukung minat bakat", "Rencana karir (kuliah/bekerja)",
         "Prodi yang dituju / sasaran dunia kerja", "Mapel pilihan pendukung rencana karir"],
       murid.map((m, i) => {
-        const k = riasec(m.id);
-        return [i + 1, m.nama, k, k ? I.TIPE[k[0]].profesi : "", m.rencana_karir, m.prodi_tujuan || m.cita_cita, m.mapel_pilihan];
+        const k = riasec(m.id), x = dd.get(m.id);
+        return [i + 1, m.nama, k, k ? I.TIPE[k[0]].profesi : "", m.rencana_karir || x.rencana_karir,
+          m.prodi_tujuan || x.prodi_tujuan || m.cita_cita || x.cita_cita, m.mapel_pilihan || x.mapel_pilihan];
       }), [0, 2]),
 
     kelompok: () => tabel(
@@ -1544,7 +1620,10 @@ function renderCetakan(d, o) {
         const a = ak.get(m.id) || {}, f = pr.get(m.id) || {};
         const kar = f.karakter || {};
         const karBaik = Object.keys(kar).filter((x) => kar[x] >= 3), karPerlu = Object.keys(kar).filter((x) => kar[x] <= 2);
-        const karakter = f.catatan_karakter || gabung(karBaik.length && "Baik: " + karBaik.join(", "), karPerlu.length && "Perlu dibina: " + karPerlu.join(", "));
+        const karakter = f.catatan_karakter || gabung(karBaik.length && "Baik: " + karBaik.join(", "), karPerlu.length && "Perlu dibina: " + karPerlu.join(", "))
+          || teksRefleksi(refleksi(m.id));
+        const x = dd.get(m.id);
+        const mudah = m.mapel_disukai || x.mapel_mudah, sulit = m.mapel_sulit || x.mapel_sulit;
         const kp = kompetensi(m.id);
         let komp = "";
         if (kp) {
@@ -1553,8 +1632,9 @@ function renderCetakan(d, o) {
           komp = gabung(kuat.length && "Kuat: " + kuat.join(", "), lemah.length && "Perlu ditingkatkan: " + lemah.join(", ")) || "Umumnya baik";
         }
         return [i + 1, m.nama,
-          gabung(a.mapel_kuat && "Kuat: " + a.mapel_kuat, a.mapel_bantuan && "Perlu bantuan: " + a.mapel_bantuan, a.hambatan && "Hambatan: " + a.hambatan),
-          gabung(f.bakat, f.ekskul && "Ekskul: " + f.ekskul, f.prestasi && "Prestasi: " + f.prestasi),
+          gabung(a.mapel_kuat && "Kuat: " + a.mapel_kuat, a.mapel_bantuan && "Perlu bantuan: " + a.mapel_bantuan, a.hambatan && "Hambatan: " + a.hambatan)
+            || gabung(mudah && "Mudah dipahami: " + mudah, sulit && "Sulit dipahami: " + sulit, x.kesulitan_belajar && "Kesulitan: " + x.kesulitan_belajar),
+          gabung(f.bakat, f.ekskul && "Ekskul: " + f.ekskul, f.prestasi && "Prestasi: " + f.prestasi) || m.hobi_bakat,
           karakter, komp, f.kesimpulan, f.rekomendasi || a.tindak_lanjut];
       })),
 
@@ -1565,6 +1645,7 @@ function renderCetakan(d, o) {
       const tb = el("tbody");
       bulan.forEach((b) => {
         const ps = (d.pertemuan || []).filter((x) => x.tanggal.startsWith(b));
+        if (o.lewati && !ps.length) return;
         const per = new Map(murid.map((m) => [m.id, { nama: m.nama, H: 0, n: 0 }]));
         ps.forEach((x) => (x.kehadiran || []).forEach((k) => {
           let r = per.get(k.murid_id);
@@ -1584,6 +1665,7 @@ function renderCetakan(d, o) {
           tb.append(tr);
         });
       });
+      if (!tb.children.length) tb.append(el("tr", {}, el("td", { colspan: 7, class: "ct-kosong", text: "Belum ada pertemuan kelompok pada semester ini." })));
       return el("table", { class: "ct-tabel" }, el("thead", {}, el("tr", {},
         ...["Bulan", "Jumlah pertemuan", "No", "Nama murid", "Jumlah kehadiran", "Jumlah ketidakhadiran", "Persentase kehadiran"].map((t) => el("th", { text: t })))), tb);
     },
@@ -1595,6 +1677,151 @@ function renderCetakan(d, o) {
     w.append(el("section", { class: "ct-lembar" }, ...kepala(judul, ekstra), BUAT[k](), ttd()));
   });
 }
+
+// salin data diri murid ke data murid, hanya kolom yang masih kosong
+const PETA_DD = { gol_darah: "gol_darah", jumlah_saudara: "jumlah_saudara", mapel_mudah: "mapel_disukai", mapel_sulit: "mapel_sulit",
+  mapel_pilihan: "mapel_pilihan", guru_mapel_pilihan: "guru_mapel_pilihan", rencana_karir: "rencana_karir", prodi_tujuan: "prodi_tujuan", cita_cita: "cita_cita" };
+async function terapkanDataDiri(isi) {
+  const data = { id: detail.id }; let n = 0;
+  for (const [k, kol] of Object.entries(PETA_DD)) {
+    const v = isi[k];
+    if (v && v !== "Tidak tahu" && !detail[kol]) { data[kol] = v; n++; }
+  }
+  if (!n) { toast("Tidak ada kolom kosong yang bisa dilengkapi"); return; }
+  try { const r = await api("murid.simpan", data); setelahMuridBerubah(r.murid); toast(n + " kolom data murid dilengkapi"); }
+  catch (e) { if (e.message) toast(e.message); }
+}
+
+// ---------- isi massal ----------
+// [target, kolom, label, kunci data diri murid untuk saran]
+const KOLOM_MASSAL = [
+  ["murid", "mapel_pilihan", "Mapel pilihan", "mapel_pilihan"],
+  ["murid", "guru_mapel_pilihan", "Guru mapel pilihan", "guru_mapel_pilihan"],
+  ["murid", "rencana_karir", "Rencana karir (kuliah/bekerja)", "rencana_karir"],
+  ["murid", "prodi_tujuan", "Prodi / sasaran dunia kerja", "prodi_tujuan"],
+  ["murid", "gol_darah", "Golongan darah", "gol_darah"],
+  ["murid", "jumlah_saudara", "Jumlah saudara", "jumlah_saudara"],
+  ["akademis", "hambatan", "Kesulitan belajar", "kesulitan_belajar"],
+  ["profil", "gaya_belajar", "Gaya belajar", "gaya_belajar"],
+  ["profil", "catatan_karakter", "Karakter (catatan perkembangan)", null],
+  ["profil", "kesimpulan", "Hasil (catatan perkembangan)", null],
+  ["profil", "rekomendasi", "Tindak lanjut (catatan perkembangan)", null],
+];
+const DAFTAR_MASSAL = { gol_darah: "dl-goldar", gaya_belajar: "dl-gaya", rencana_karir: "dl-rencana" };
+let msData = null, msMuat = 0;
+(function () {
+  const sel = $("ms_kolom");
+  const grup = (label, t) => el("optgroup", { label }, ...KOLOM_MASSAL.map((k, i) => [k, i]).filter(([k]) => t(k[0]))
+    .map(([k, i]) => el("option", { value: String(i), text: k[2] })));
+  sel.append(grup("Data murid", (t) => t === "murid"), grup("Per semester", (t) => t !== "murid"));
+})();
+const kolomMassal = () => KOLOM_MASSAL[+$("ms_kolom").value];
+const jumlahUbah = () => $("msDaftar").querySelectorAll(".ms-baris.ubah").length;
+
+function siapkanMassal() {
+  const p = periodeDefault();
+  if (!$("ms_tahun").value) { $("ms_tahun").value = p.t; $("ms_semester").value = p.s; }
+  muatMassal();
+}
+async function muatMassal() {
+  const tahun = $("ms_tahun").value.trim();
+  if (!/^\d{4}\/\d{4}$/.test(tahun)) { toast("Tulis tahun ajaran seperti 2026/2027"); return; }
+  const id = ++msMuat;
+  $("msDaftar").replaceChildren(el("p", { class: "redup", text: "Memuat..." }));
+  try {
+    const d = await api("cetak.data", { tahun_ajaran: tahun, semester: $("ms_semester").value });
+    if (id !== msMuat) return;
+    msData = d; renderMassal();
+  } catch (e) { if (e.message) toast(e.message); }
+}
+function saranMassal(m) {
+  const [, kolom, , ddKey] = kolomMassal(), as = msData.asesmen || [];
+  const x = cariDataDiri(as, m.id, $("ms_tahun").value.trim());
+  if (kolom === "jumlah_saudara") return x.jumlah_saudara || saudaraDari(m.anak_ke);
+  if (kolom === "catatan_karakter") {
+    const b1 = msData.dari.slice(0, 7), b2 = msData.sampai.slice(0, 7);
+    return teksRefleksi(as.find((a) => a.murid_id === m.id && a.jenis === "refleksi" && a.periode >= b1 && a.periode <= b2));
+  }
+  return ddKey ? x[ddKey] || "" : "";
+}
+function renderMassal() {
+  const [target, kolom] = kolomMassal();
+  $("msPeriode").hidden = target === "murid";
+  const src = new Map(((target === "profil" ? msData.profil : msData.akademis) || []).map((r) => [r.murid_id, r]));
+  const nilai = (m) => (target === "murid" ? m[kolom] : (src.get(m.id) || {})[kolom]) || "";
+  const panjang = ["catatan_karakter", "kesimpulan", "rekomendasi", "hambatan"].includes(kolom);
+  let adaSaran = 0;
+  const murid = msData.murid || [];
+  $("msDaftar").replaceChildren(...(murid.length ? murid.map((m) => {
+    const v = nilai(m), saran = saranMassal(m);
+    if (saran && !v) adaSaran++;
+    const id = "ms_" + m.id;
+    const inp = panjang ? el("textarea", { id, rows: 2 }) : el("input", { id, list: DAFTAR_MASSAL[kolom] });
+    inp.value = v; inp.dataset.asli = v; inp.dataset.saran = saran || "";
+    return el("div", { class: "ms-baris", "data-id": m.id },
+      el("label", { for: id, text: m.nama + (m.kelas ? " · " + m.kelas : "") }), inp,
+      saran && saran !== v ? el("p", { class: "ms-saran", text: (kolom === "catatan_karakter" ? "Dari refleksi murid: " : kolom === "jumlah_saudara" && !cariDataDiri(msData.asesmen || [], m.id, "").jumlah_saudara ? "Dari kolom Anak ke: " : "Jawaban murid: ") + saran }) : null);
+  }) : [kosong("Belum ada murid aktif.")]));
+  $("msInfoOtomatis").textContent = adaSaran
+    ? `${adaSaran} murid punya saran dari jawaban portal atau data yang ada. Ketuk tombol di atas untuk memasukkannya ke kotak yang kosong.`
+    : ["kesimpulan", "rekomendasi"].includes(kolom) ? "Kolom ini penilaian guru, jadi tidak ada isian otomatis." : "Belum ada saran untuk kolom ini. Saran muncul setelah murid mengisi Data diri di portal.";
+  $("btnMsOtomatis").disabled = !adaSaran;
+  hitungUbah();
+}
+function hitungUbah() {
+  $("msDaftar").querySelectorAll(".ms-baris").forEach((b) => {
+    const i = b.querySelector("input,textarea");
+    b.classList.toggle("ubah", i.value.trim() !== i.dataset.asli);
+  });
+  const n = jumlahUbah();
+  $("btnMsSimpan").disabled = !n;
+  $("btnMsSimpan").textContent = n ? `Simpan ${n} perubahan` : "Simpan";
+}
+$("msDaftar").addEventListener("input", hitungUbah);
+$("btnMsOtomatis").addEventListener("click", () => {
+  let n = 0;
+  $("msDaftar").querySelectorAll(".ms-baris").forEach((b) => {
+    const i = b.querySelector("input,textarea");
+    if (!i.value.trim() && i.dataset.saran) { i.value = i.dataset.saran; n++; }
+  });
+  hitungUbah(); toast(n + " kotak terisi. Periksa dulu, lalu simpan.");
+});
+$("btnMsSama").addEventListener("click", () => {
+  const t = $("msSama").value.trim();
+  if (!t) { toast("Tulis teksnya dulu"); return; }
+  let n = 0;
+  $("msDaftar").querySelectorAll(".ms-baris").forEach((b) => {
+    const i = b.querySelector("input,textarea");
+    if (!i.value.trim()) { i.value = t; n++; }
+  });
+  hitungUbah(); toast(n + " kotak kosong terisi");
+});
+let msKolomLama = "0";
+$("ms_kolom").addEventListener("change", () => {
+  if (jumlahUbah() && !confirm("Ada perubahan yang belum disimpan. Ganti kolom dan buang perubahan?")) { $("ms_kolom").value = msKolomLama; return; }
+  msKolomLama = $("ms_kolom").value;
+  if (msData) renderMassal();
+});
+["ms_tahun", "ms_semester"].forEach((id) => $(id).addEventListener("change", () => {
+  if (jumlahUbah() && !confirm("Ada perubahan yang belum disimpan. Ganti periode dan buang perubahan?")) return;
+  muatMassal();
+}));
+$("btnMsSimpan").addEventListener("click", async () => {
+  const [target, kolom] = kolomMassal();
+  const isian = [...$("msDaftar").querySelectorAll(".ms-baris.ubah")].map((b) => ({ murid_id: b.dataset.id, nilai: b.querySelector("input,textarea").value }));
+  const btn = $("btnMsSimpan"); btn.disabled = true; btn.textContent = "Menyimpan...";
+  try {
+    const r = await api("massal.simpan", { target, kolom, tahun_ajaran: $("ms_tahun").value.trim(), semester: $("ms_semester").value, isian });
+    toast(r.disimpan + " murid disimpan");
+    if (target === "murid") muridAktif = [];
+    await muatMassal(); if (target === "murid") muatMurid();
+  } catch (e) { if (e.message) toast(e.message); hitungUbah(); }
+});
+$("btnKeMassal").addEventListener("click", () => tampilHalaman("massal"));
+$("btnKembaliMassal").addEventListener("click", () => {
+  if (jumlahUbah() && !confirm("Ada perubahan yang belum disimpan. Tetap kembali?")) return;
+  tampilHalaman("murid");
+});
 
 // ---------- pengaturan ----------
 const KOLOM_P = ["sekolah", "kepala_sekolah", "nip_kepala", "guru_wali", "nip_guru_wali", "kota", "tahun_ajaran", "semester"];
