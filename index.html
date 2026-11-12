@@ -139,6 +139,12 @@ a{color:var(--teal);font-weight:600}
 .panel p{margin:6px 0 0}
 a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--tinta)}
 
+/* pesan murid */
+.kepala-aksi{display:flex;gap:8px}
+.badge{display:inline-block;min-width:20px;margin-left:6px;padding:0 6px;border-radius:99px;background:var(--stabilo);color:var(--tinta);font-size:12px;font-weight:700;line-height:20px}
+.item.baru{border-color:var(--merah);box-shadow:3px 3px 0 var(--merah)}
+.isi-pesan{white-space:pre-wrap;margin:0}
+
 /* isi massal */
 .ms-baris{background:var(--putih);border:2px solid var(--garis);border-radius:6px;padding:10px 12px;margin-bottom:8px}
 .ms-baris.ubah{border-color:var(--teal)}
@@ -207,7 +213,9 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
 
 <!-- APLIKASI -->
 <div id="app" hidden>
-  <header><h1>Jurnal Guru Wali</h1><button class="btn" id="btnKeluar">Keluar</button></header>
+  <header><h1>Jurnal Guru Wali</h1>
+    <div class="kepala-aksi"><button class="btn" id="btnPesan" type="button">Pesan<span class="badge" id="badgePesan" hidden></span></button>
+    <button class="btn" id="btnKeluar">Keluar</button></div></header>
   <main id="utama">
 
     <!-- DAFTAR MURID -->
@@ -307,6 +315,17 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
         <div class="panel" id="panelTautan"></div>
         <div id="hasilAsesmen"></div>
       </div>
+    </section>
+
+    <!-- PESAN DARI MURID -->
+    <section id="hal-pesan" hidden>
+      <h2 class="judul" style="font-size:20px">Pesan dari murid</h2>
+      <p class="sub">Masuk lewat portal murid. Membuka pesan menandainya sudah dibaca.</p>
+      <div class="tab" id="pTab">
+        <button data-arsip="0" aria-pressed="true">Masuk</button>
+        <button data-arsip="1" aria-pressed="false">Arsip</button>
+      </div>
+      <div id="daftarPesan"></div>
     </section>
 
     <!-- ISI MASSAL -->
@@ -525,6 +544,25 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
   </form>
 </dialog>
 
+<!-- BACA PESAN -->
+<dialog id="dlgPesan">
+  <form id="formPesan">
+    <h2 id="psJudul" tabindex="-1" autofocus>Pesan</h2>
+    <p class="redup kecil" id="psInfo" style="margin:-8px 0 10px"></p>
+    <div class="panel"><p class="isi-pesan" id="psIsi"></p></div>
+    <p class="peringatan" style="margin-top:0">Jika pesan menyangkut keselamatan murid atau orang lain, segera koordinasikan dengan guru BK.</p>
+    <div class="baris"><label for="ps_tanggapan">Tanggapan untuk murid <span class="redup">(terlihat di portalnya)</span></label>
+      <textarea id="ps_tanggapan" rows="3" placeholder="Misal: Terima kasih sudah cerita. Besok istirahat pertama temui Bapak di ruang guru, ya."></textarea></div>
+    <p class="pesan" id="pesanPs" role="alert"></p>
+    <div class="aksi">
+      <button class="btn utama" type="submit" id="btnPsSimpan">Kirim tanggapan</button>
+      <button class="btn" type="button" id="btnPsJurnal">Jadikan jurnal</button>
+      <button class="btn" type="button" id="btnPsArsip">Arsipkan</button>
+      <button class="btn" type="button" id="btnPsTutup">Tutup</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- PRATINJAU IMPOR -->
 <dialog id="dlgImpor">
   <form onsubmit="return false">
@@ -722,7 +760,7 @@ const KOLOM_PER = {
 };
 
 // ---------- tampilan ----------
-const HAL = ["murid", "detail", "massal", "kelompok", "jurnal", "pengaturan", "cetak"];
+const HAL = ["murid", "detail", "massal", "kelompok", "jurnal", "pengaturan", "cetak", "pesan"];
 function keLogin(pesan = "") {
   simpanToken(null); detail = null;
   document.querySelectorAll("dialog[open]").forEach((d) => d.close());
@@ -733,7 +771,7 @@ function keLogin(pesan = "") {
 async function keApp() {
   $("login").hidden = true; $("app").hidden = false;
   tampilHalaman("murid");
-  await Promise.all([muatMurid(), muatPengaturan()]);
+  await Promise.all([muatMurid(), muatPengaturan(), perbaruiBadge()]);
 }
 function tampilHalaman(h) {
   HAL.forEach((x) => ($("hal-" + x).hidden = x !== h));
@@ -747,6 +785,7 @@ function tampilHalaman(h) {
   if (h === "kelompok") muatKelompok();
   if (h === "cetak") siapkanCetak();
   if (h === "massal") siapkanMassal();
+  if (h === "pesan") muatPesan();
 }
 document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => tampilHalaman(b.dataset.hal)));
 
@@ -1821,6 +1860,88 @@ $("btnKeMassal").addEventListener("click", () => tampilHalaman("massal"));
 $("btnKembaliMassal").addEventListener("click", () => {
   if (jumlahUbah() && !confirm("Ada perubahan yang belum disimpan. Tetap kembali?")) return;
   tampilHalaman("murid");
+});
+
+// ---------- pesan dari murid ----------
+let semuaPesan = [], pesanArsip = false, pesanDipilih = null;
+const TOPIK_JURNAL = { Belajar: "Akademik", Teman: "Pribadi", Keluarga: "Keluarga", "Diri sendiri": "Pribadi", Lainnya: "Lainnya" };
+async function perbaruiBadge() {
+  if (!token) return;
+  try {
+    const n = (await api("pesan.jumlah")).baru || 0;
+    $("badgePesan").textContent = n; $("badgePesan").hidden = !n;
+    $("btnPesan").setAttribute("aria-label", n ? `Pesan, ${n} belum dibaca` : "Pesan");
+  } catch (e) {}
+}
+setInterval(() => { if (!document.hidden && !$("app").hidden) perbaruiBadge(); }, 120000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("app").hidden) perbaruiBadge(); });
+$("btnPesan").addEventListener("click", () => tampilHalaman("pesan"));
+
+document.querySelectorAll("#pTab button").forEach((b) => b.addEventListener("click", () => {
+  pesanArsip = b.dataset.arsip === "1";
+  document.querySelectorAll("#pTab button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  muatPesan();
+}));
+async function muatPesan() {
+  try { semuaPesan = (await api("pesan.daftar", { arsip: pesanArsip })).pesan || []; renderPesan(); }
+  catch (e) { if (e.message) toast(e.message); }
+}
+function renderPesan() {
+  $("daftarPesan").replaceChildren(...(semuaPesan.length ? semuaPesan.map((p) => el("button", {
+    class: "item" + (p.dibaca_pada ? "" : " baru"), type: "button", onclick: () => bukaPesan(p) },
+    el("div", { class: "item-atas" },
+      el("span", { text: fmtWaktu(p.dikirim_pada) + " · " + p.topik }),
+      !p.dibaca_pada ? el("span", { class: "lencana s-belum", text: "Baru" })
+        : p.tanggapan ? el("span", { class: "lencana s-selesai", text: "Ditanggapi" }) : el("span", { class: "lencana", text: "Dibaca" })),
+    el("b", { text: (p.murid ? p.murid.nama : "") + (p.murid && p.murid.kelas ? " (" + p.murid.kelas + ")" : "") }),
+    el("p", { text: potong(p.isi, 160) }),
+    p.ingin_bertemu ? el("span", { class: "lencana s-proses", text: "Ingin bertemu langsung" }) : null))
+    : [kosong(pesanArsip ? "Belum ada pesan yang diarsipkan." : "Belum ada pesan. Pesan muncul di sini setelah murid menulis lewat portal.")]));
+}
+function gantiPesan(r) {
+  const i = semuaPesan.findIndex((x) => x.id === r.id);
+  if (i >= 0) semuaPesan[i] = r;
+  if (pesanDipilih && pesanDipilih.id === r.id) pesanDipilih = r;
+  renderPesan();
+}
+async function bukaPesan(p) {
+  pesanDipilih = p; bersihPesan("pesanPs");
+  $("psJudul").textContent = p.murid ? p.murid.nama : "Pesan";
+  $("psInfo").textContent = [p.murid && p.murid.kelas, p.topik, fmtWaktu(p.dikirim_pada), p.ingin_bertemu && "ingin bertemu langsung"].filter(Boolean).join(" · ");
+  $("psIsi").textContent = p.isi;
+  $("ps_tanggapan").value = p.tanggapan || "";
+  $("btnPsArsip").textContent = p.arsip ? "Kembalikan" : "Arsipkan";
+  $("dlgPesan").showModal();
+  if (!p.dibaca_pada) {
+    try { gantiPesan((await api("pesan.ubah", { id: p.id, baca: true })).pesan); perbaruiBadge(); } catch (e) {}
+  }
+}
+$("btnPsTutup").addEventListener("click", () => $("dlgPesan").close());
+$("formPesan").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("btnPsSimpan"); btn.disabled = true;
+  try {
+    gantiPesan((await api("pesan.ubah", { id: pesanDipilih.id, tanggapan: $("ps_tanggapan").value })).pesan);
+    $("dlgPesan").close(); toast($("ps_tanggapan").value.trim() ? "Tanggapan terkirim ke portal murid" : "Tanggapan dihapus");
+  } catch (err) { galat("pesanPs", err); }
+  finally { btn.disabled = false; }
+});
+$("btnPsArsip").addEventListener("click", async () => {
+  try {
+    await api("pesan.ubah", { id: pesanDipilih.id, arsip: !pesanDipilih.arsip });
+    $("dlgPesan").close(); toast(pesanDipilih.arsip ? "Pesan dikembalikan" : "Pesan diarsipkan");
+    muatPesan(); perbaruiBadge();
+  } catch (err) { galat("pesanPs", err); }
+});
+$("btnPsJurnal").addEventListener("click", async () => {
+  const p = pesanDipilih;
+  $("dlgPesan").close();
+  await bukaJurnal(null, p.murid_id);
+  $("j_bentuk").value = "Daring";
+  $("j_topik").value = TOPIK_JURNAL[p.topik] || "Lainnya";
+  $("j_ringkasan").value = `Murid bercerita lewat portal (${fmtWaktu(p.dikirim_pada)}, topik ${p.topik}):\n${p.isi}`;
+  if (p.tanggapan) $("j_kesepakatan").value = "Tanggapan guru wali: " + p.tanggapan;
+  if (p.ingin_bertemu) $("j_tindak_lanjut").value = "Bertemu langsung dengan murid";
 });
 
 // ---------- pengaturan ----------
