@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Ruang Kerja Guru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --kertas:#EEF1F5; --putih:#fff; --tinta:#1E2A44; --redup:#5C6780; --garis:#C9D1DF;
+  --stabilo:#F6D74A; --teal:#1F7A74; --ungu:#534AB7;
+  --serif:'Bitter',Georgia,'Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--kertas);color:var(--tinta);font:16px/1.5 var(--sans);-webkit-text-size-adjust:100%;min-height:100vh;
+  background-image:linear-gradient(var(--garis) 1px,transparent 1px);background-size:100% 28px}
+main{max-width:720px;margin:0 auto;padding:calc(32px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
+h1,h2{font-family:var(--serif);margin:0}
+.judul{display:inline-block;background:var(--stabilo);padding:2px 12px;transform:rotate(-1deg);font-size:28px}
+.sapa{color:var(--redup);margin:10px 0 28px}
+.daftar{display:grid;gap:16px}
+@media (min-width:640px){ .daftar{grid-template-columns:1fr 1fr} }
+.kartu{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit;background:var(--putih);
+  border:2px solid var(--tinta);border-radius:10px;padding:18px;box-shadow:4px 4px 0 var(--tinta);min-height:180px;
+  transition:transform .08s,box-shadow .08s}
+a.kartu:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--tinta)}
+a.kartu:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--tinta)}
+a.kartu:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+.ikon{width:44px;height:44px;border-radius:8px;border:2px solid var(--tinta);display:grid;place-items:center;margin-bottom:4px}
+.ikon svg{width:24px;height:24px}
+.kartu h2{font-size:20px}
+.kartu p{margin:0;color:var(--redup);font-size:15px}
+.buka{margin-top:auto;padding-top:10px;font-weight:700}
+.wali .ikon{background:#D6EEEC} .wali .buka{color:var(--teal)}
+.sna .ikon{background:#E6E4F7}  .sna .buka{color:var(--ungu)}
+footer{margin-top:32px;color:var(--redup);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1 class="judul">Ruang Kerja Guru</h1>
+  <p class="sapa" id="sapa">Pilih aplikasi yang ingin dibuka.</p>
+
+  <div class="daftar">
+    <a class="kartu wali" href="guru-wali.html">
+      <span class="ikon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1E2A44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z"/><path d="M4 19.5A2 2 0 0 1 6 17.5h12"/><path d="M9 8h5M9 11.5h5"/></svg>
+      </span>
+      <h2>Jurnal Guru Wali</h2>
+      <p>Data murid, pendampingan kelompok dan individu, hasil instrumen, pesan murid, cetak lampiran.</p>
+      <span class="buka">Buka ›</span>
+    </a>
+
+    <a class="kartu sna" href="MathSNA.html">
+      <span class="ikon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1E2A44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M8.3 8.2 10.8 15M15.9 7.6 13.2 15M8.5 6.8l7-.6"/></svg>
+      </span>
+      <h2>MathSNA</h2>
+      <p>Petakan komentar penonton jadi jaringan topik dan emosi, lalu susun ide konten matematika.</p>
+      <span class="buka">Buka ›</span>
+    </a>
+  </div>
+
+  <footer>Adeng Abdullah, M.Pd · SMAN 6 Pandeglang</footer>
+</main>
+<script>
+  // sapaan sesuai waktu setempat
+  (function () {
+    var j = new Date().getHours();
+    var w = j < 11 ? "pagi" : j < 15 ? "siang" : j < 18 ? "sore" : "malam";
+    document.getElementById("sapa").textContent = "Selamat " + w + ". Pilih aplikasi yang ingin dibuka.";
+  })();
+</script>
+</body>
+</html>
