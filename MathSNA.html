@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MathSNA — Strategi Konten</title>
+<style>
+  :root{
+    --bg:#f6f5f1; --card:#fff; --text:#1f1e1b; --muted:#6b6a64; --border:#e3e1d9;
+    --accent:#534ab7; --topic:#534ab7; --emotion:#d85a30; --ok:#0f6e56; --radius:12px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#161614; --card:#201f1d; --text:#ecebe6; --muted:#a3a19a; --border:#34332f;
+           --accent:#afa9ec; --topic:#afa9ec; --emotion:#f0997b; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card)}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  #appView{max-width:1280px;margin:0 auto;padding:12px 16px}
+  .split{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
+  @media (min-width:960px){ .split{grid-template-columns:1fr 360px} }
+  .stack{display:grid;gap:12px;max-width:760px}
+  .tab:not(.active){display:none}
+  #filterCard{margin-bottom:12px}
+  nav#tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:12px}
+  nav#tabs button{background:transparent;color:var(--muted);border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px}
+  nav#tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+  @media (max-width:720px){
+    #appView{padding-bottom:84px}
+    nav#tabs{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:10;background:var(--card);border-top:1px solid var(--border);border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
+    nav#tabs button{flex:1;padding:12px 4px;font-size:14px;border-bottom:0;border-top:2px solid transparent}
+    nav#tabs button[aria-selected=true]{border-top-color:var(--accent)}
+  }
+  .hist{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--border)}
+  .hist:first-child{border-top:0}
+  .hist button{background:transparent;color:var(--text);border:0;padding:2px 4px;text-align:left}
+  .hist .pick{flex:1;min-width:0} .hist .pick b{display:block;font-weight:600}
+  .hist .star{color:var(--accent);font-size:18px;line-height:1}
+  .src-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:14px}
+  .src-row:first-child{border-top:0}
+  #keyNodes h3{font-size:13px;margin:10px 0 2px;font-weight:600} #keyNodes h3:first-child{margin-top:0}
+  ol.kn{margin:0;padding-left:20px;font-size:14px} ol.kn li{margin:2px 0}
+  table.metric{border-collapse:collapse;margin-top:6px;font-size:13px} table.metric td{padding:1px 14px 1px 0}
+  table.metric td:first-child{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+  .card h2{font-size:15px;margin:0 0 10px;font-weight:600}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,button,select{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)}
+  input{flex:1;min-width:140px}
+  button{cursor:pointer;background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.ghost{background:transparent;color:var(--text);border-color:var(--border)}
+  button:disabled{opacity:.5;cursor:default}
+  #graph{height:60vh;min-height:360px;border-radius:8px;border:1px solid var(--border);margin-top:10px}
+  .legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  ol.trend{margin:0;padding-left:20px} ol.trend li{margin:4px 0}
+  .muted{color:var(--muted);font-size:13px}
+  .chip{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;margin:2px;border:1px solid var(--border)}
+  .chip.topic{color:var(--topic)} .chip.emotion{color:var(--emotion)}
+  pre.script{white-space:pre-wrap;background:var(--bg);padding:10px;border-radius:8px;font-size:13px;max-height:320px;overflow:auto}
+  #status{font-size:13px;color:var(--muted);min-height:18px;margin-top:6px}
+  .hidden{display:none!important}
+  .filters select{max-width:100%} #fSource{flex:1;min-width:140px;max-width:280px}
+  .up{color:var(--ok);font-size:12px;font-weight:600} .down{color:var(--muted);font-size:12px}
+  textarea{width:100%;font:inherit;font-size:14px;padding:8px 10px;margin-top:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);resize:vertical}
+  input[type=file]{flex:1;min-width:0;font-size:13px;padding:6px}
+  .imp-list{margin:8px 0 0;padding-left:20px;font-size:13px} .imp-list li{margin:3px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MathSNA</h1>
+  <button id="btnLogout" class="ghost hidden">Keluar</button>
+</header>
+
+<!-- ============ SETUP KONEKSI (sekali saja per browser) ============ -->
+<section id="setupView" class="card hidden" style="max-width:420px;margin:40px auto">
+  <h2>Hubungkan ke Supabase</h2>
+  <p class="muted" style="margin:0 0 10px">Supabase → Project Settings → API. Disimpan di browser ini saja.</p>
+  <div class="row" style="flex-direction:column;align-items:stretch">
+    <input id="cfgUrl" placeholder="Project URL, mis. https://abcd1234.supabase.co" autocapitalize="off" autocorrect="off">
+    <input id="cfgKey" placeholder="anon / publishable key" autocapitalize="off" autocorrect="off">
+    <button id="btnSaveCfg">Simpan &amp; lanjut</button>
+  </div>
+  <div id="cfgMsg" class="muted" style="margin-top:8px"></div>
+</section>
+
+<!-- ============ LOGIN ============ -->
+<section id="loginView" class="card" style="max-width:380px;margin:40px auto">
+  <h2>Masuk</h2>
+  <div class="row" style="flex-direction:column;align-items:stretch">
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button id="btnLogin">Masuk</button>
+  </div>
+  <div id="loginMsg" class="muted" style="margin-top:8px"></div>
+  <p style="margin:12px 0 0"><a href="#" id="lnkResetCfg" class="muted">Ganti koneksi Supabase</a></p>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="appView" class="hidden">
+
+  <nav id="tabs" role="tablist" aria-label="Bagian dashboard">
+    <button role="tab" data-tab="peta" aria-selected="true">Peta</button>
+    <button role="tab" data-tab="tren" aria-selected="false">Tren</button>
+    <button role="tab" data-tab="ide"  aria-selected="false">Ide</button>
+    <button role="tab" data-tab="data" aria-selected="false">Data</button>
+  </nav>
+
+  <!-- Filter bersama untuk tab Peta & Tren -->
+  <section class="card" id="filterCard">
+    <div class="row filters">
+      <select id="fPlatform" aria-label="Platform">
+        <option value="">Semua platform</option>
+        <option value="youtube">YouTube</option>
+        <option value="tiktok">TikTok</option>
+        <option value="instagram">Instagram</option>
+        <option value="x">X</option>
+        <option value="manual">Lainnya</option>
+      </select>
+      <select id="fSource" aria-label="Sumber"><option value="">Semua sumber</option></select>
+      <select id="fPeriod" aria-label="Periode">
+        <option value="0">Semua waktu</option>
+        <option value="7">7 hari terakhir</option>
+        <option value="30">30 hari terakhir</option>
+        <option value="90">90 hari terakhir</option>
+      </select>
+      <label class="muted">Bobot min
+        <select id="minWeight"><option>1</option><option selected>2</option><option>3</option><option>5</option></select>
+      </label>
+      <label class="muted"><input type="checkbox" id="fSame" checked style="min-width:0;flex:none"> Relasi sejenis</label>
+      <button id="btnRefresh" class="ghost" aria-label="Muat ulang">Muat ulang</button>
+    </div>
+    <div id="status"></div>
+  </section>
+
+  <!-- ===== TAB PETA ===== -->
+  <div class="tab split active" id="tab-peta" role="tabpanel">
+    <section class="card">
+      <h2>Peta jaringan topik &amp; emosi</h2>
+      <div class="row">
+        <label class="muted">Ukuran node
+          <select id="sizeBy">
+            <option value="freq">Frekuensi komentar</option>
+            <option value="strength">Kekuatan hubungan (hub)</option>
+            <option value="betweenness">Jembatan antar klaster</option>
+            <option value="pagerank">Pengaruh (PageRank)</option>
+          </select>
+        </label>
+      </div>
+      <div id="graph"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--topic)"></span>Topik</span>
+        <span><span class="dot" style="background:var(--emotion)"></span>Emosi</span>
+        <span>Garis: abu topik–emosi · <span style="color:var(--topic)">ungu</span> topik–topik · <span style="color:var(--emotion)">oranye</span> emosi–emosi</span>
+      </div>
+    </section>
+    <div style="display:grid;gap:12px">
+    <section class="card">
+      <h2>Klaster terpilih</h2>
+      <div id="nodeInfo"></div>
+      <p class="muted" id="clusterHint" style="margin:0 0 8px">Ketuk satu node di graf untuk memilih klasternya.</p>
+      <div id="clusterChips"></div>
+      <div class="row" style="margin-top:10px">
+        <select id="format">
+          <option value="short">Short / Reels (≤60 dtk)</option>
+          <option value="long">Video panjang (8–12 mnt)</option>
+          <option value="carousel">Carousel / thread</option>
+        </select>
+        <button id="btnIdea" disabled>Buat ide</button>
+      </div>
+      <div id="genMsg" class="muted" style="margin-top:8px"></div>
+    </section>
+    <section class="card">
+      <h2>Node kunci</h2>
+      <div id="keyNodes"><p class="muted">Belum ada data.</p></div>
+    </section>
+    </div>
+  </div>
+
+  <!-- ===== TAB TREN ===== -->
+  <div class="tab" id="tab-tren" role="tabpanel">
+    <section class="card">
+      <h2>Tren topik &amp; emosi</h2>
+      <div class="row" style="margin-bottom:6px">
+        <select id="trendSort" aria-label="Urutkan">
+          <option value="naik">Paling naik</option>
+          <option value="kuat">Paling banyak</option>
+          <option value="pmi">Paling khas (PMI)</option>
+        </select>
+        <span class="muted" id="trendSub">Pasangan topik–emosi terkuat</span>
+      </div>
+      <ol class="trend" id="trendList"><li class="muted">Belum ada data</li></ol>
+    </section>
+  </div>
+
+  <!-- ===== TAB IDE ===== -->
+  <div class="tab split" id="tab-ide" role="tabpanel">
+    <section class="card">
+      <h2>Ide konten</h2>
+      <div id="ideaOut"><p class="muted">Pilih klaster di tab Peta lalu klik "Buat ide", atau buka salah satu ide dari riwayat.</p></div>
+    </section>
+    <section class="card">
+      <h2>Riwayat ide</h2>
+      <label class="muted"><input type="checkbox" id="favOnly" style="min-width:0;flex:none"> Favorit saja</label>
+      <div id="ideaHist" style="margin-top:6px"><p class="muted">Memuat…</p></div>
+    </section>
+  </div>
+
+  <!-- ===== TAB DATA ===== -->
+  <div class="tab stack" id="tab-data" role="tabpanel">
+    <section class="card">
+      <h2>Ambil &amp; analisis komentar</h2>
+      <div class="row">
+        <input id="videoId" placeholder="ID / URL video YouTube">
+        <button id="btnIngest">Ambil komentar</button>
+        <button id="btnTag" class="ghost">Analisis (tag)</button>
+      </div>
+      <div id="dataStatus" class="muted" style="margin-top:6px;min-height:18px"></div>
+    </section>
+
+  <!-- ===== Impor komentar manual ===== -->
+  <section class="card" id="importCard">
+    <h2>Impor komentar (TikTok / IG / X)</h2>
+    <div class="row">
+      <select id="impPlatform">
+        <option value="tiktok">TikTok</option>
+        <option value="instagram">Instagram</option>
+        <option value="x">X</option>
+        <option value="youtube">YouTube</option>
+        <option value="manual">Lainnya</option>
+      </select>
+      <input id="impSource" placeholder="Nama / URL konten sumber">
+    </div>
+    <textarea id="impText" rows="6" placeholder="Tempel komentar di sini, satu komentar per baris…"></textarea>
+    <div class="row" style="margin-top:8px">
+      <span class="muted">atau file CSV/TXT:</span>
+      <input id="impFile" type="file" accept=".csv,.txt,text/csv,text/plain">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnImpPreview" class="ghost">Pratinjau</button>
+      <button id="btnImport">Impor</button>
+    </div>
+    <div id="impStatus" class="muted" style="margin-top:6px"></div>
+    <div id="impPreview"></div>
+  </section>
+
+    <section class="card">
+      <h2>Sumber komentar</h2>
+      <p class="muted" style="margin:0 0 6px">Teranalisis / total komentar</p>
+      <div id="srcList"><p class="muted">Belum ada sumber.</p></div>
+    </section>
+  </div>
+
+</div>
+
+<!-- ============ LIBRARIES (CDN) ============ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.25.4/dist/graphology.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology-library@0.8.0/dist/graphology-library.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sigma@2.4.0/build/sigma.min.js"></script>
+
+<script>
+/* =========================================================
+   CONFIG — hanya anon key yang boleh ada di sini
+   ========================================================= */
+// Opsional: isi langsung di sini. Kalau dibiarkan placeholder,
+// halaman akan meminta URL & key lewat form lalu menyimpannya di browser.
+const CONFIG = {
+  SUPABASE_URL: 'https://mhdswzvwvscsshbqbbzq.supabase.co',   // project Guru Wali
+  SUPABASE_ANON_KEY: '<ANON_KEY>',   // GANTI: anon/publishable key project Guru Wali
+  TREND_LIMIT: 50,
+};
+const CFG_KEY = 'mathsna_supabase_cfg';
+const $ = (id) => document.getElementById(id);
+
+const Cfg = {
+  isPlaceholder: (v) => !v || v.includes('<'),
+  load() {
+    if (!this.isPlaceholder(CONFIG.SUPABASE_URL) && !this.isPlaceholder(CONFIG.SUPABASE_ANON_KEY))
+      return { url: CONFIG.SUPABASE_URL, key: CONFIG.SUPABASE_ANON_KEY };
+    try {
+      const c = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
+      if (c?.url && c?.key) return c;
+    } catch {}
+    return null;
+  },
+  save(url, key) { try { localStorage.setItem(CFG_KEY, JSON.stringify({ url, key })); return true; } catch { return false; } },
+  clear() { try { localStorage.removeItem(CFG_KEY); } catch {} },
+};
+
+let sb = null;   // dibuat saat konfigurasi tersedia (lihat BOOT)
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* =========================================================
+   DATA — semua akses Supabase (tabel, view, Edge Function)
+   ========================================================= */
+const Data = {
+  // Graf berfilter lewat RPC sna_graph (schema-02-filter.sql)
+  noSame: false,                                   // true bila server belum punya schema-03
+  async graph({ platform, source, from, to, minWeight = 1, same = false }) {
+    const args = {
+      p_platforms: platform ? [platform] : null,
+      p_videos: source ? [source] : null,
+      p_from: from ? from.toISOString() : null,
+      p_to: to ? to.toISOString() : null,
+      p_min_weight: minWeight,
+    };
+    let res = await sb.rpc('sna_graph', same && !this.noSame ? { ...args, p_same: true } : args);
+    // Server belum dimigrasi ke schema-03 → ulangi tanpa p_same
+    if (res.error && same && !this.noSame && /p_same|schema cache|could not find/i.test(res.error.message)) {
+      this.noSame = true;
+      res = await sb.rpc('sna_graph', args);
+    }
+    if (res.error) throw new Error(/sna_graph/.test(res.error.message)
+      ? 'Fungsi sna_graph belum ada. Jalankan 2-schema-ide.sql, lalu pastikan schema "ide" sudah ditambahkan di Exposed schemas.' : res.error.message);
+    return res.data;
+  },
+  async ideas() {
+    const { data, error } = await sb.from('ideas').select('id,cluster_key,idea,saved,created_at')
+      .order('created_at', { ascending: false }).limit(50);
+    if (error) throw error; return data ?? [];
+  },
+  async setSaved(id, saved) {
+    const { data, error } = await sb.from('ideas').update({ saved }).eq('id', id).select('id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('Tidak ada baris yang berubah (cek policy RLS "update ideas")');
+  },
+  async sources() {
+    const { data, error } = await sb.rpc('sna_sources');
+    if (error) throw error; return data ?? [];
+  },
+  async nodes() {
+    const { data, error } = await sb.from('sna_nodes').select('*');
+    if (error) throw error; return data;
+  },
+  async edges(minWeight) {
+    const { data, error } = await sb.from('sna_edges').select('*')
+      .gte('weight', minWeight).order('weight', { ascending: false });
+    if (error) throw error; return data;
+  },
+  // Panggil Edge Function dan tampilkan pesan error ASLI (bukan "non-2xx")
+  async call(name, body) {
+    const { data, error } = await sb.functions.invoke(name, { body });
+    if (!error) return data;
+    let detail = error.message;
+    const res = error.context;                       // Response asli dari function
+    if (res && typeof res.status === 'number') {
+      let text = '';
+      try { text = await res.text(); } catch {}
+      let msg = text;
+      try { msg = JSON.parse(text).error ?? JSON.parse(text).msg ?? text; } catch {}
+      const hint = {
+        401: ' → token tidak valid; coba Keluar lalu Masuk lagi',
+        404: ` → function "${name}" belum di-deploy atau namanya beda`,
+        546: ' → function kehabisan waktu/memori',
+      }[res.status] ?? '';
+      detail = `[${res.status}] ${String(msg).slice(0, 300)}${hint}`;
+    }
+    console.error(name, detail);
+    throw new Error(detail);
+  },
+  ingest(videoId)        { return this.call('ingest-youtube', { videoId }); },
+  tag()                  { return this.call('tag-comments', { batch: 50 }); },
+  idea(cluster, format)  { return this.call('generate-idea', { cluster, format }); },
+  importComments(platform, source, comments) { return this.call('import-comments', { platform, source, comments }); },
+};
+
+/* =========================================================
+   GRAPH — bangun graf bipartit, layout, Louvain, render Sigma
+   ========================================================= */
+const Graph = {
+  g: null, renderer: null, selected: null,
+
+  SIZE_LABEL: { freq: 'Frekuensi komentar', strength: 'Kekuatan hubungan', betweenness: 'Jembatan', pagerank: 'Pengaruh' },
+
+  // Pengacak dengan seed tetap → tata letak & klaster stabil antar pemuatan
+  rng(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  },
+  alpha: (hex, a) => /^#[0-9a-f]{6}$/i.test(hex) ? hex + Math.round(a * 255).toString(16).padStart(2, '0') : hex,
+
+  build(nodes, edges, sameKind = true) {
+    const g = new graphology.Graph({ type: 'undirected' });
+    const rnd = this.rng(20261101);
+    const freq = new Map(nodes.map(n => [`${n.kind}:${n.label}`, n.freq]));
+    const colorOf = { topic: css('--topic'), emotion: css('--emotion') };
+    const edgeColor = { te: css('--border'), tt: this.alpha(colorOf.topic, .55), ee: this.alpha(colorOf.emotion, .55) };
+
+    const addNode = (kind, label) => {
+      const key = `${kind}:${label}`;
+      if (g.hasNode(key)) return key;
+      g.addNode(key, { label, kind, freq: freq.get(key) || 1, size: 6, color: colorOf[kind], x: rnd(), y: rnd() });
+      return key;
+    };
+
+    for (const e of edges) {
+      const type = e.type ?? 'te';
+      if (type !== 'te' && !sameKind) continue;
+      const kinds = type === 'tt' ? ['topic', 'topic'] : type === 'ee' ? ['emotion', 'emotion'] : ['topic', 'emotion'];
+      const a = addNode(kinds[0], e.a ?? e.topic), b = addNode(kinds[1], e.b ?? e.emotion);
+      if (a === b || g.hasEdge(a, b)) continue;
+      g.addEdge(a, b, {
+        rel: type,                                  // BUKAN "type": atribut itu dipakai Sigma untuk memilih program gambar garis
+        weight: e.weight, pmi: e.pmi,
+        dist: 1 / e.weight,                         // jarak untuk betweenness: makin sering muncul bersama = makin dekat
+        size: Math.min(6, 0.5 + Math.log2(e.weight)), color: edgeColor[type],
+      });
+    }
+    if (g.order === 0) return g;
+
+    // Layout ForceAtlas2 (berbobot) + komunitas Louvain (seed tetap)
+    graphologyLibrary.layoutForceAtlas2.assign(g, {
+      iterations: 300,
+      settings: { ...graphologyLibrary.layoutForceAtlas2.inferSettings(g), edgeWeightInfluence: 1 },
+    });
+    graphologyLibrary.communitiesLouvain.assign(g, { getEdgeWeight: 'weight', rng: this.rng(20261102) });
+    this.metrics(g);
+    this.applySize($('sizeBy').value, g);
+    return g;
+  },
+
+  // Sentralitas: strength (total bobot), betweenness (jembatan), PageRank (pengaruh)
+  BETWEENNESS_MAX_NODES: 800,
+  metrics(g) {
+    g.forEachNode((n) => {
+      let s = 0; g.forEachEdge(n, (_e, a) => { s += a.weight; });
+      g.mergeNodeAttributes(n, { strength: s, betweenness: 0, pagerank: 0 });
+    });
+    const C = graphologyLibrary.metrics.centrality;
+    try {
+      const pr = C.pagerank(g, { getEdgeWeight: 'weight' });
+      for (const n in pr) g.setNodeAttribute(n, 'pagerank', pr[n]);
+    } catch (e) { console.warn('pagerank gagal', e); }
+    this.betweennessSkipped = g.order > this.BETWEENNESS_MAX_NODES;
+    if (!this.betweennessSkipped) {
+      try {
+        const bt = C.betweenness(g, { getEdgeWeight: 'dist', normalized: true });
+        for (const n in bt) g.setNodeAttribute(n, 'betweenness', bt[n]);
+      } catch (e) { console.warn('betweenness gagal', e); }
+    }
+  },
+
+  // Ukuran node mengikuti metrik pilihan
+  applySize(metric, g = this.g) {
+    if (!g) return;
+    let max = 0;
+    g.forEachNode((_n, a) => { max = Math.max(max, a[metric] ?? 0); });
+    g.forEachNode((n, a) => {
+      const v = max > 0 ? Math.sqrt((a[metric] ?? 0) / max) : 0.3;
+      g.setNodeAttribute(n, 'size', 4 + 14 * v);
+    });
+    if (this.renderer) this.renderer.refresh();
+  },
+
+  rank(metric, key) {
+    const arr = this.g.mapNodes((n, a) => [n, a[metric] ?? 0]).sort((x, y) => y[1] - x[1]);
+    return arr.findIndex(([n]) => n === key) + 1;
+  },
+
+  top(metric, k = 5) {
+    if (!this.g) return [];
+    return this.g.mapNodes((n, a) => ({ key: n, label: a.label, kind: a.kind, v: a[metric] ?? 0 }))
+      .filter(x => x.v > 0).sort((x, y) => y.v - x.v).slice(0, k);
+  },
+
+  nodeInfo(key) {
+    const g = this.g, a = g.getNodeAttributes(key), nb = [];
+    g.forEachEdge(key, (_e, ea, s, t) => {
+      const o = s === key ? t : s;
+      nb.push({ label: g.getNodeAttribute(o, 'label'), kind: g.getNodeAttribute(o, 'kind'), weight: ea.weight, type: ea.rel });
+    });
+    nb.sort((x, y) => y.weight - x.weight);
+    return { key, label: a.label, kind: a.kind, freq: a.freq, strength: a.strength, betweenness: a.betweenness,
+             pagerank: a.pagerank, degree: g.degree(key), n: g.order,
+             rStrength: this.rank('strength', key), rBetween: this.rank('betweenness', key), neighbors: nb.slice(0, 5) };
+  },
+
+  pending: false,
+
+  render(g) {
+    if (this.renderer) { this.renderer.kill(); this.renderer = null; }
+    this.g = g; this.selected = null; this.pending = false;
+    if (g.order === 0) { $('graph').innerHTML = '<p class="muted" style="padding:12px">Belum ada edge pada filter ini.</p>'; return; }
+    // Sigma error bila wadah berukuran nol (tab Peta sedang tidak aktif) → tunda
+    if (!$('graph').offsetWidth) { this.pending = true; return; }
+    this.draw();
+  },
+
+  // Dipanggil saat tab Peta dibuka
+  show() {
+    if (this.pending) { this.pending = false; this.draw(); }
+    else if (this.renderer) { this.renderer.resize(); this.renderer.refresh(); }
+  },
+
+  draw() {
+    const g = this.g;
+    $('graph').innerHTML = '';
+    this.renderer = new Sigma(g, $('graph'), {
+      labelColor: { color: css('--text') }, labelRenderedSizeThreshold: 4,
+      labelDensity: 1, labelGridCellSize: 60,
+      nodeReducer: (n, d) => this.selected === null || g.getNodeAttribute(n, 'community') === this.selected
+        ? d : { ...d, color: css('--border'), label: '' },
+      edgeReducer: (e, d) => {
+        if (this.selected === null) return d;
+        const [s, t] = g.extremities(e);
+        return g.getNodeAttribute(s, 'community') === this.selected && g.getNodeAttribute(t, 'community') === this.selected
+          ? d : { ...d, hidden: true };
+      },
+    });
+    this.renderer.on('clickNode', ({ node }) => this.selectCluster(g.getNodeAttribute(node, 'community'), node));
+    this.renderer.on('clickStage', () => this.selectCluster(null));
+  },
+
+  selectCluster(community, node = null) {
+    this.selected = community;
+    this.renderer.refresh();
+    UI.showCluster(community === null ? [] : this.clusterNodes(community));
+    UI.showNode(node ? this.nodeInfo(node) : null);
+  },
+
+  clusterNodes(community) {
+    return this.g.filterNodes((n, a) => a.community === community)
+      .map(n => { const a = this.g.getNodeAttributes(n); return { kind: a.kind, label: a.label, freq: a.freq }; })
+      .sort((a, b) => b.freq - a.freq);
+  },
+};
+
+/* =========================================================
+   IMPORTER — tempel teks / CSV → [{text, author, like_count, published_at}]
+   ========================================================= */
+const Importer = {
+  MAX: 5000,
+  fileRows: null,                                  // hasil parse file terakhir
+
+  // Nama kolom yang dikenali (setelah dinormalisasi: huruf kecil, tanpa simbol)
+  COLS: {
+    text:         ['text','comment','comments','commenttext','komentar','isi','content','message','body','caption'],
+    author:       ['author','username','user','nickname','name','nama','uniqueid','handle','screenname'],
+    like_count:   ['likes','like','likecount','diggcount','favoritecount','jumlahlike','likescount','suka'],
+    published_at: ['date','time','created','createdat','createtime','timestamp','publishedat','tanggal','waktu'],
+  },
+
+  esc: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c])),
+  norm: (h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''),
+
+  // Parser CSV kecil: dukung tanda kutip, koma/titik koma/tab, baris baru di dalam kutip
+  parseCSV(src) {
+    src = src.replace(/^﻿/, '');
+    const first = src.split(/\r?\n/, 1)[0];
+    const delim = [',', ';', '\t'].sort((a, b) => first.split(b).length - first.split(a).length)[0];
+    const rows = []; let row = [], cell = '', q = false;
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (q) {
+        if (ch === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') q = false;
+        else cell += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === delim) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && src[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(r => r.some(c => c.trim()));
+  },
+
+  // Petakan baris CSV ke objek komentar
+  fromCSV(src) {
+    const rows = this.parseCSV(src);
+    if (!rows.length) return [];
+    const header = rows[0].map(this.norm);
+    const find = (key) => header.findIndex(h => this.COLS[key].includes(h));
+    let iText = find('text');
+    let body = rows.slice(1);
+
+    if (iText < 0) {
+      // Tanpa header yang dikenali: pakai kolom dengan teks rata-rata terpanjang
+      body = rows;
+      const n = Math.max(...rows.map(r => r.length));
+      let best = 0, bestLen = -1;
+      for (let c = 0; c < n; c++) {
+        const avg = rows.reduce((s, r) => s + (r[c]?.length ?? 0), 0) / rows.length;
+        if (avg > bestLen) { bestLen = avg; best = c; }
+      }
+      iText = best;
+    }
+    const iAuth = find('author'), iLike = find('like_count'), iDate = find('published_at');
+    return body.map(r => ({
+      text: r[iText] ?? '',
+      author: iAuth >= 0 ? r[iAuth] : undefined,
+      like_count: iLike >= 0 ? r[iLike] : undefined,
+      published_at: iDate >= 0 ? r[iDate] : undefined,
+    }));
+  },
+
+  fromLines(src) {
+    return src.split(/\r?\n/).map(t => ({ text: t }));
+  },
+
+  clean(list) {
+    const seen = new Set();
+    return list
+      .map(c => ({ ...c, text: String(c.text ?? '').replace(/\s+/g, ' ').trim() }))
+      .filter(c => c.text.length >= 3 && !seen.has(c.text) && seen.add(c.text))
+      .slice(0, this.MAX);
+  },
+
+  // Kumpulkan dari file (prioritas) + textarea
+  collect() {
+    const pasted = $('impText').value.trim();
+    const fromPaste = pasted ? this.fromLines(pasted) : [];
+    return this.clean([...(this.fileRows ?? []), ...fromPaste]);
+  },
+
+  async readFile(file) {
+    const text = await file.text();
+    this.fileRows = /\.txt$/i.test(file.name) ? this.fromLines(text) : this.fromCSV(text);
+  },
+
+  preview(list) {
+    const top = list.slice(0, 5).map(c =>
+      `<li>${this.esc(c.text.slice(0, 140))}${c.author ? ` <span class="muted">— ${this.esc(c.author)}</span>` : ''}</li>`).join('');
+    $('impPreview').innerHTML = list.length
+      ? `<ol class="imp-list">${top}</ol>${list.length > 5 ? `<p class="muted" style="margin:4px 0 0">…dan ${list.length - 5} lainnya</p>` : ''}`
+      : '';
+  },
+
+  bind() {
+    const status = (m) => { $('impStatus').textContent = m || ''; };
+
+    $('impFile').onchange = async (e) => {
+      const f = e.target.files?.[0];
+      this.fileRows = null;
+      if (!f) return;
+      try { await this.readFile(f); const l = this.collect(); this.preview(l); status(`${f.name}: ${l.length} komentar terbaca.`); }
+      catch (err) { status('Gagal membaca file: ' + err.message); }
+    };
+
+    $('btnImpPreview').onclick = () => {
+      const l = this.collect(); this.preview(l);
+      status(l.length ? `${l.length} komentar siap diimpor.` : 'Belum ada komentar. Tempel teks atau pilih file.');
+    };
+
+    $('btnImport').onclick = async () => {
+      const list = this.collect();
+      const source = $('impSource').value.trim();
+      if (!source) return status('Isi nama / URL konten sumber dulu.');
+      if (!list.length) return status('Belum ada komentar. Tempel teks atau pilih file.');
+      $('btnImport').disabled = true; status(`Mengimpor ${list.length} komentar…`);
+      try {
+        const r = await Data.importComments($('impPlatform').value, source, list);
+        status(`Tersimpan ${r.inserted} komentar baru${r.duplicates ? `, ${r.duplicates} sudah ada` : ''}. Lanjut klik "Analisis (tag)".`);
+        UI.loadSources(); $('impText').value = ''; $('impFile').value = ''; this.fileRows = null; this.preview([]);
+      } catch (err) { status('Gagal impor: ' + err.message); }
+      finally { $('btnImport').disabled = false; }
+    };
+  },
+};
+
+/* =========================================================
+   UI — event handler & render panel
+   ========================================================= */
+const UI = {
+  cluster: [],
+
+  status(msg) { $('status').textContent = msg || ''; },
+  dstatus(msg) { $('dataStatus').textContent = msg || ''; },
+
+  /* ---------- Tab ---------- */
+  TABS: ['peta', 'tren', 'ide', 'data'],
+  tab: 'peta',
+  setTab(name, push = true) {
+    if (!this.TABS.includes(name)) name = 'peta';
+    this.tab = name;
+    document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
+    $('filterCard').classList.toggle('hidden', name !== 'peta' && name !== 'tren');
+    if (name === 'peta') requestAnimationFrame(() => Graph.show());
+    if (name === 'ide' && !this.ideasLoaded) this.loadIdeas();
+    if (push && location.hash !== '#' + name) location.hash = name;
+    window.scrollTo(0, 0);
+  },
+
+  parseVideoId(v) {
+    const m = v.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/);
+    return m ? m[1] : v.trim();
+  },
+
+  sourcesCache: [],
+
+  // Isi dropdown sumber sesuai platform terpilih
+  async loadSources() {
+    try { this.sourcesCache = await Data.sources(); } catch { this.sourcesCache = []; }
+    this.fillSources();
+    this.renderSources();
+  },
+  renderSources() {
+    const esc = Importer.esc, L = this.sourcesCache;
+    $('srcList').innerHTML = L.length ? L.map(s =>
+      `<div class="src-row"><span>${esc(s.title.slice(0, 60))} <span class="muted">· ${esc(s.platform)}</span></span>
+       <span class="${s.tagged < s.comments ? '' : 'muted'}">${s.tagged}/${s.comments}</span></div>`).join('')
+      : '<p class="muted">Belum ada sumber.</p>';
+  },
+  fillSources() {
+    const plat = $('fPlatform').value, keep = $('fSource').value;
+    const list = this.sourcesCache.filter(s => !plat || s.platform === plat);
+    const esc = Importer.esc;
+    $('fSource').innerHTML = '<option value="">Semua sumber</option>' + list.map(s =>
+      `<option value="${esc(s.id)}">${esc(s.title.slice(0, 50))} (${s.tagged}/${s.comments})</option>`).join('');
+    if (list.some(s => s.id === keep)) $('fSource').value = keep;
+  },
+
+  filters() {
+    const days = +$('fPeriod').value;
+    const now = new Date();
+    const from = days ? new Date(now - days * 864e5) : null;
+    return {
+      platform: $('fPlatform').value || null,
+      source: $('fSource').value || null,
+      days, from, to: null,
+      minWeight: +$('minWeight').value,
+      same: $('fSame').checked,
+    };
+  },
+
+  async loadGraph() {
+    try {
+      this.status('Memuat graf…');
+      const f = this.filters();
+      const jobs = [Data.graph(f)];
+      // Periode sebelumnya (panjang sama) untuk mendeteksi tren naik
+      if (f.days) jobs.push(Data.graph({ ...f, from: new Date(f.from - f.days * 864e5), to: f.from, minWeight: 1, same: false }));
+      const [cur, prev] = await Promise.all(jobs);
+
+      const g = Graph.build(cur.nodes, cur.edges, f.same);
+      Graph.render(g);
+      // Tren hanya membandingkan pasangan topik–emosi
+      const isTE = (e) => !e.type || e.type === 'te';
+      this.renderTrend(cur.edges.filter(isTE), prev && { ...prev, edges: prev.edges.filter(isTE) }, f.days);
+      this.showCluster([]); this.showNode(null); this.renderKeyNodes();
+      this.status(`${cur.comments} komentar · ${cur.tagged} teranalisis · ${g.order} node · ${g.size} relasi`
+        + (cur.comments > cur.tagged ? ' · klik "Analisis" untuk sisanya' : '')
+        + (f.same && Data.noSame ? ' · fungsi sna_graph belum mendukung relasi sejenis' : ''));
+    } catch (e) { this.status('Gagal memuat: ' + e.message); }
+  },
+
+  trendState: null,
+
+  renderTrend(edges, prev, days) {
+    let list = edges.map(e => ({ ...e, delta: null, isNew: false }));
+    if (prev) {
+      const before = new Map(prev.edges.map(e => [`${e.topic}|${e.emotion}`, e.weight]));
+      const hasPrev = prev.tagged > 0;
+      list = list.map(e => {
+        const b = before.get(`${e.topic}|${e.emotion}`) ?? 0;
+        return { ...e, delta: e.weight - b, isNew: hasPrev && b === 0 };
+      });
+    }
+    this.trendState = { list, days, hasPrev: !!prev };
+    this.drawTrend();
+  },
+
+  drawTrend() {
+    const esc = Importer.esc;
+    if (!this.trendState) return;
+    const { list, days, hasPrev } = this.trendState;
+    const mode = $('trendSort').value;
+    const byWeight = (a, b) => (b.weight - a.weight) || (b.pmi - a.pmi);
+    let sorted, sub;
+    if (mode === 'naik' && hasPrev) {
+      sorted = [...list].sort((a, b) => (b.delta - a.delta) || byWeight(a, b));
+      sub = `Dibanding ${days} hari sebelumnya`;
+    } else if (mode === 'pmi') {
+      sorted = [...list].sort((a, b) => (b.pmi - a.pmi) || (b.weight - a.weight));
+      sub = 'Paling khas muncul bersama (bukan kebetulan)';
+    } else {
+      sorted = [...list].sort(byWeight);
+      sub = mode === 'naik' ? 'Pilih periode 7/30/90 hari untuk melihat yang naik' : 'Jumlah komentar terbanyak';
+    }
+    $('trendSub').textContent = sub;
+
+    const badge = (e) => e.delta === null ? ''
+      : e.isNew ? ' <span class="up">baru</span>'
+      : e.delta > 0 ? ` <span class="up">▲ +${e.delta}</span>`
+      : e.delta < 0 ? ` <span class="down">▼ ${e.delta}</span>` : '';
+
+    const top = sorted.slice(0, CONFIG.TREND_LIMIT);
+    $('trendList').innerHTML = top.length
+      ? top.map(e => `<li><b>${esc(e.topic)}</b> × <span style="color:var(--emotion)">${esc(e.emotion)}</span>${badge(e)}
+          <span class="muted">· ${e.weight} komentar · PMI ${e.pmi}</span></li>`).join('')
+      : '<li class="muted">Belum ada data untuk filter ini</li>';
+  },
+
+  renderKeyNodes() {
+    const esc = Importer.esc, fmt = {
+      strength: (v) => v, betweenness: (v) => v.toFixed(2), pagerank: (v) => (v * 100).toFixed(1) + '%',
+    };
+    const list = (title, hint, metric) => {
+      const t = Graph.top(metric);
+      return `<h3>${title}</h3><p class="muted" style="margin:0 0 4px">${hint}</p>` + (t.length
+        ? `<ol class="kn">${t.map(x => `<li><span style="color:var(--${x.kind})">${esc(x.label)}</span> <span class="muted">${fmt[metric](x.v)}</span></li>`).join('')}</ol>`
+        : '<p class="muted">—</p>');
+    };
+    if (!Graph.g || Graph.g.order === 0) { $('keyNodes').innerHTML = '<p class="muted">Belum ada data.</p>'; return; }
+    $('keyNodes').innerHTML =
+      list('Hub', 'Paling kuat terhubung (total bobot)', 'strength') +
+      list('Jembatan', Graph.betweennessSkipped ? 'Dilewati: graf terlalu besar' : 'Menghubungkan klaster berbeda', 'betweenness') +
+      list('Pengaruh', 'PageRank: dihubungi node-node penting', 'pagerank');
+  },
+
+  showNode(info) {
+    const esc = Importer.esc;
+    if (!info) { $('nodeInfo').innerHTML = ''; return; }
+    const tags = [];
+    if (info.rStrength <= 3) tags.push('hub');
+    if (info.betweenness > 0 && info.rBetween <= 3) tags.push('jembatan');
+    $('nodeInfo').innerHTML = `
+      <div style="margin-bottom:10px">
+        <b style="color:var(--${info.kind})">${esc(info.label)}</b>
+        <span class="muted">· ${info.kind === 'topic' ? 'topik' : 'emosi'} · ${info.freq} komentar</span>
+        ${tags.map(t => `<span class="up"> ${t}</span>`).join('')}
+        <table class="metric">
+          <tr><td>Relasi</td><td>${info.degree}</td></tr>
+          <tr><td>Kekuatan</td><td>${info.strength} <span class="muted">(#${info.rStrength} dari ${info.n})</span></td></tr>
+          <tr><td>Jembatan</td><td>${info.betweenness.toFixed(2)} ${info.betweenness > 0 ? `<span class="muted">(#${info.rBetween})</span>` : ''}</td></tr>
+          <tr><td>Pengaruh</td><td>${(info.pagerank * 100).toFixed(1)}%</td></tr>
+        </table>
+        <div class="muted" style="margin-top:4px">Terkait: ${info.neighbors.map(n =>
+          `${esc(n.label)} (${n.weight})`).join(', ') || '—'}</div>
+      </div>`;
+  },
+
+  showCluster(nodes) {
+    this.cluster = nodes;
+    $('btnIdea').disabled = nodes.length === 0;
+    $('clusterHint').classList.toggle('hidden', nodes.length > 0);
+    $('clusterChips').innerHTML = nodes.map(n =>
+      `<span class="chip ${n.kind}">${n.label} · ${n.freq}</span>`).join('');
+  },
+
+  renderIdea(idea, id = null, saved = false) {
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+    const outline = (idea.outline ?? []).map(o => `<li>${esc(o)}</li>`).join('');
+    const tags = (idea.hashtag ?? []).join(' ');
+    const fullText = [
+      idea.judul, '', 'HOOK: ' + (idea.hook ?? ''), '',
+      idea.naskah ?? '', '', 'CTA: ' + (idea.cta ?? ''), tags,
+    ].join('\n');
+
+    $('ideaOut').innerHTML = `
+      <h2 style="margin:0 0 4px">${esc(idea.judul ?? 'Ide konten')}</h2>
+      <p style="margin:0 0 6px"><b>Hook:</b> ${esc(idea.hook)}</p>
+      ${idea.alasan ? `<p class="muted" style="margin:0 0 8px">${esc(idea.alasan)}</p>` : ''}
+      ${outline ? `<ol style="margin:0 0 8px;padding-left:20px;font-size:14px">${outline}</ol>` : ''}
+      <pre class="script">${esc(idea.naskah ?? JSON.stringify(idea, null, 2))}</pre>
+      ${idea.cta ? `<p style="margin:6px 0"><b>CTA:</b> ${esc(idea.cta)}</p>` : ''}
+      ${tags ? `<p class="muted" style="margin:0 0 8px">${esc(tags)}</p>` : ''}
+      <div class="row">
+        <button class="ghost" id="btnCopy">Salin naskah lengkap</button>
+        ${id ? `<button class="ghost" id="btnFav">${saved ? '★ Favorit' : '☆ Tandai favorit'}</button>` : ''}
+      </div>`;
+
+    if (id) $('btnFav').onclick = async () => {
+      const next = !(this.ideasCache.find(i => i.id === id)?.saved ?? saved);
+      try {
+        await Data.setSaved(id, next);
+        const row = this.ideasCache.find(i => i.id === id); if (row) row.saved = next;
+        $('btnFav').textContent = next ? '★ Favorit' : '☆ Tandai favorit';
+        this.renderHist();
+      } catch (e) { $('btnFav').textContent = 'Gagal: ' + e.message; }
+    };
+
+    $('btnCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(fullText); $('btnCopy').textContent = 'Tersalin ✓'; }
+      catch { $('btnCopy').textContent = 'Gagal menyalin'; }
+    };
+  },
+
+  /* ---------- Riwayat ide ---------- */
+  ideasCache: [], ideasLoaded: false,
+
+  async loadIdeas() {
+    try { this.ideasCache = await Data.ideas(); this.ideasLoaded = true; }
+    catch (e) { $('ideaHist').innerHTML = `<p class="muted">Gagal memuat riwayat: ${Importer.esc(e.message)}</p>`; return; }
+    this.renderHist();
+  },
+
+  renderHist() {
+    const esc = Importer.esc, favOnly = $('favOnly').checked;
+    const L = this.ideasCache.filter(i => !favOnly || i.saved);
+    $('ideaHist').innerHTML = L.length ? L.map(i => {
+      const d = new Date(i.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      return `<div class="hist">
+        <button class="pick" data-id="${esc(i.id)}"><b>${esc(i.idea?.judul ?? 'Ide tanpa judul')}</b>
+          <span class="muted">${esc(i.idea?.format ?? '')} · ${d} · ${esc((i.cluster_key ?? '').replace(/\|/g, ', ').slice(0, 50))}</span></button>
+        <button class="star" data-star="${esc(i.id)}" aria-label="Favorit">${i.saved ? '★' : '☆'}</button>
+      </div>`;
+    }).join('') : `<p class="muted">${favOnly ? 'Belum ada favorit.' : 'Belum ada ide. Buat dari tab Peta.'}</p>`;
+  },
+
+  bind() {
+    $('btnLogin').onclick = async () => {
+      const { error } = await sb.auth.signInWithPassword({ email: $('email').value, password: $('password').value });
+      $('loginMsg').textContent = error ? error.message : '';
+    };
+    $('btnLogout').onclick = () => sb.auth.signOut();
+    document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => this.setTab(b.dataset.tab));
+    window.addEventListener('hashchange', () => { if (this.authed) this.setTab(location.hash.slice(1), false); });
+    $('trendSort').onchange = () => this.drawTrend();
+    $('sizeBy').onchange = () => Graph.applySize($('sizeBy').value);
+    $('fSame').onchange = () => this.loadGraph();
+    $('favOnly').onchange = () => this.renderHist();
+    $('ideaHist').onclick = async (e) => {
+      const star = e.target.closest('[data-star]');
+      if (star) {
+        const row = this.ideasCache.find(i => i.id === star.dataset.star); if (!row) return;
+        try { await Data.setSaved(row.id, !row.saved); row.saved = !row.saved; this.renderHist(); }
+        catch (err) { star.textContent = '!'; star.title = err.message; }
+        return;
+      }
+      const pick = e.target.closest('[data-id]');
+      if (pick) {
+        const row = this.ideasCache.find(i => i.id === pick.dataset.id);
+        if (row) { this.renderIdea(row.idea, row.id, row.saved); if (innerWidth < 960) $('ideaOut').scrollIntoView({ behavior: 'smooth' }); }
+      }
+    };
+    $('btnRefresh').onclick = async () => { await this.loadSources(); this.loadGraph(); };
+    $('minWeight').onchange = () => this.loadGraph();
+    $('fPeriod').onchange   = () => this.loadGraph();
+    $('fSource').onchange   = () => this.loadGraph();
+    $('fPlatform').onchange = () => { this.fillSources(); this.loadGraph(); };
+
+    $('btnIngest').onclick = async () => {
+      const id = this.parseVideoId($('videoId').value);
+      if (!id) return this.dstatus('Isi ID atau URL video dulu.');
+      try { this.dstatus('Mengambil komentar…'); const r = await Data.ingest(id); this.dstatus(`Tersimpan ${r?.inserted ?? 0} komentar. Lanjut klik "Analisis".`); this.loadSources(); }
+      catch (e) { this.dstatus('Gagal ambil: ' + e.message); }
+    };
+
+    $('btnTag').onclick = async () => {
+      try { this.dstatus('Menganalisis komentar…'); const r = await Data.tag(); await this.loadSources(); await this.loadGraph(); this.dstatus(`Dianalisis ${r?.tagged ?? 0} komentar, sisa ${r?.remaining ?? '?'}.`); }
+      catch (e) { this.dstatus('Gagal analisis: ' + e.message); }
+    };
+
+    $('btnIdea').onclick = async () => {
+      $('btnIdea').disabled = true; $('genMsg').textContent = 'Menyusun ide… (sekitar 10–20 detik)';
+      try {
+        const r = await Data.idea(this.cluster, $('format').value);
+        await this.loadIdeas();                       // ambil riwayat terbaru dari server
+        this.renderIdea(r, r.id, false);
+        $('genMsg').textContent = '';
+        this.setTab('ide');
+      } catch (e) { $('genMsg').textContent = 'Gagal: ' + e.message; }
+      finally { $('btnIdea').disabled = this.cluster.length === 0; }
+    };
+  },
+
+  setAuthed(isAuthed) {
+    $('loginView').classList.toggle('hidden', isAuthed);
+    $('appView').classList.toggle('hidden', !isAuthed);
+    $('btnLogout').classList.toggle('hidden', !isAuthed);
+    this.authed = isAuthed;
+    if (isAuthed && !this.loaded) {
+      this.loaded = true;
+      this.setTab(location.hash.slice(1) || 'peta', false);
+      this.loadSources().then(() => this.loadGraph());
+    }
+    if (!isAuthed) { this.loaded = false; this.ideasLoaded = false; }
+  },
+};
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+function showSetup(msg = '') {
+  $('setupView').classList.remove('hidden');
+  $('loginView').classList.add('hidden');
+  $('appView').classList.add('hidden');
+  $('cfgMsg').textContent = msg;
+}
+
+$('btnSaveCfg').onclick = async () => {
+  let url = $('cfgUrl').value.trim().replace(/\/+$/, '');
+  const key = $('cfgKey').value.trim();
+  if (!/^https:\/\/.+\.supabase\.(co|in)$/.test(url)) return ($('cfgMsg').textContent = 'URL harus seperti https://xxxx.supabase.co');
+  if (key.length < 20) return ($('cfgMsg').textContent = 'Key terlihat tidak lengkap.');
+  $('cfgMsg').textContent = 'Memeriksa koneksi…';
+  try {
+    const r = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
+    if (!r.ok) throw new Error(`status ${r.status}`);
+  } catch (e) { return ($('cfgMsg').textContent = 'Tidak bisa terhubung: ' + e.message + '. Periksa URL & key.'); }
+  if (!Cfg.save(url, key)) return ($('cfgMsg').textContent = 'Browser menolak penyimpanan. Isi CONFIG langsung di file.');
+  location.reload();
+};
+
+$('lnkResetCfg').onclick = (e) => {
+  e.preventDefault();
+  Cfg.clear();
+  if (Cfg.load()) return ($('loginMsg').textContent = 'Koneksi diatur langsung di CONFIG dalam file.');
+  showSetup();
+};
+
+(function boot() {
+  const cfg = Cfg.load();
+  if (!cfg) return showSetup();
+  if (typeof supabase === 'undefined') {
+    $('loginMsg').textContent = 'Library gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';
+    return;
+  }
+  // tabel & RPC MathSNA ada di schema "ide"
+  sb = supabase.createClient(cfg.url, cfg.key, { db: { schema: 'ide' } });
+  UI.bind();
+  Importer.bind();
+  sb.auth.getSession().then(({ data }) => UI.setAuthed(!!data.session));
+  sb.auth.onAuthStateChange((_e, session) => UI.setAuthed(!!session));
+})();
+</script>
+</body>
+</html>
