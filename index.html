@@ -233,6 +233,7 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
         <button class="btn" id="btnTautanMassal" type="button">Tautan portal</button>
         <button class="btn" id="btnKeMassal" type="button">Isi massal</button>
       </div>
+      <div id="bannerGanda"></div>
       <div id="daftar"></div>
       <button class="btn utama fab" id="btnTambah">+ Tambah murid</button>
     </section>
@@ -563,11 +564,25 @@ dialog .aksi{position:sticky;bottom:0;background:var(--kertas);padding:10px 0 16
   </form>
 </dialog>
 
+<!-- MURID GANDA -->
+<dialog id="dlgGanda">
+  <form onsubmit="return false">
+    <h2 tabindex="-1" autofocus>Murid ganda</h2>
+    <p class="redup kecil" style="margin:0 0 12px">Data yang paling lama dipertahankan. Kolom kosongnya dilengkapi dari duplikat (misalnya NIS), lalu jurnal, presensi, isian portal, tautan, dan pesan dipindahkan sebelum duplikat dihapus. Tidak ada data terisi yang ditimpa.</p>
+    <button class="btn utama lebar" type="button" id="btnGabungSemua">Gabungkan semua</button>
+    <div id="daftarGanda"></div>
+    <p class="pesan" id="pesanGanda" role="alert"></p>
+    <div class="aksi"><button class="btn" type="button" id="btnTutupGanda">Tutup</button></div>
+  </form>
+</dialog>
+
 <!-- PRATINJAU IMPOR -->
 <dialog id="dlgImpor">
   <form onsubmit="return false">
     <h2 tabindex="-1" autofocus>Impor dari Excel</h2>
     <div id="impRingkas" style="margin-bottom:12px"></div>
+    <label class="cek" style="margin-bottom:8px"><input type="checkbox" id="impLengkapi" checked>
+      <span>Untuk murid yang sudah ada, lengkapi kolom yang masih kosong (data yang sudah terisi tidak ditimpa)</span></label>
     <p class="pesan" id="pesanImpor" role="alert"></p>
     <div class="aksi">
       <button class="btn utama" type="button" id="btnImporYa">Impor murid</button>
@@ -820,6 +835,7 @@ async function pastikanMuridAktif() {
   try { muridAktif = (await api("murid.daftar", { status: "aktif" })).murid || []; } catch (e) {}
 }
 function render() {
+  renderBannerGanda();
   const q = $("cari").value.trim().toLowerCase();
   const daftar = semuaMurid.filter((m) => (m.nama + " " + (m.kelas || "")).toLowerCase().includes(q));
   const box = $("daftar"); box.replaceChildren();
@@ -2039,6 +2055,7 @@ $("fileImpor").addEventListener("change", async (e) => {
     const sh = wb.Sheets[wb.SheetNames[0]];
     const teks = XLSX.utils.sheet_to_json(sh, { header: 1, defval: "", raw: false, blankrows: true });
     const mentah = XLSX.utils.sheet_to_json(sh, { header: 1, defval: "", raw: true, blankrows: true });
+    await pastikanMuridAktif();
     olahImpor(teks, mentah);
   } catch (err) { toast("File tidak bisa dibaca. Gunakan .xlsx atau .csv."); }
 });
@@ -2079,6 +2096,8 @@ function olahImpor(teks, mentah) {
   if (tglGagal) tambah(`${tglGagal} tanggal lahir tidak terbaca dan akan dikosongkan.`);
   if (hasilImpor.length) tambah("Contoh: " + hasilImpor.slice(0, 3).map((m) => m.nama).join(", ") + (hasilImpor.length > 3 ? ", ..." : ""));
   if (hasilImpor.length > 300) tambah("Maksimal 300 murid sekali impor, sisanya diabaikan.");
+  const sudahAda = hasilImpor.filter((m) => cocokMurid(m, muridAktif)).length;
+  if (sudahAda) tambah(`${sudahAda} di antaranya sudah ada di aplikasi dan tidak akan ditambah lagi, ${hasilImpor.length - sudahAda} murid baru.`, true);
   $("btnImporYa").disabled = !hasilImpor.length; bersihPesan("pesanImpor");
   $("dlgImpor").showModal();
 }
@@ -2086,13 +2105,71 @@ $("btnImporBatal").addEventListener("click", () => $("dlgImpor").close());
 $("btnImporYa").addEventListener("click", async () => {
   const btn = $("btnImporYa"); btn.disabled = true; btn.textContent = "Mengimpor...";
   try {
-    const r = await api("murid.impor", { murid: hasilImpor.slice(0, 300) });
+    const r = await api("murid.impor", { murid: hasilImpor.slice(0, 300), lengkapi: $("impLengkapi").checked });
     $("dlgImpor").close();
-    toast(`${r.ditambah} murid ditambahkan` + (r.dilewati ? `, ${r.dilewati} sudah ada` : ""));
+    toast(`${r.ditambah} murid ditambahkan` + (r.dilewati ? `, ${r.dilewati} sudah ada` : "") + (r.dilengkapi ? `, ${r.dilengkapi} dilengkapi` : ""));
     muridAktif = []; await muatMurid();
   } catch (err) { galat("pesanImpor", err); }
   finally { btn.disabled = false; btn.textContent = "Impor murid"; }
 });
+
+// ---------- murid ganda ----------
+const kunciNama = (m) => norm(m.nama) + "|" + String(m.kelas || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const nisDari = (m) => String(m.nis_nisn || "").trim();
+// sama dengan logika server: NIS sama, atau nama+kelas sama dan NIS tidak bertentangan
+function cocokMurid(r, list) {
+  const n = nisDari(r), k = kunciNama(r);
+  return (n && list.some((m) => nisDari(m) === n)) || list.some((m) => kunciNama(m) === k && (!n || !nisDari(m) || nisDari(m) === n));
+}
+function cariGanda(list) {
+  const g = new Map();
+  list.forEach((m) => { const k = kunciNama(m); if (!g.has(k)) g.set(k, []); g.get(k).push(m); });
+  return [...g.values()]
+    .filter((x) => x.length > 1 && new Set(x.map(nisDari).filter(Boolean)).size <= 1)
+    .map((x) => [...x].sort((a, b) => String(a.dibuat_pada).localeCompare(String(b.dibuat_pada))));
+}
+function renderBannerGanda() {
+  const w = $("bannerGanda");
+  const grup = statusAktif === "aktif" ? cariGanda(semuaMurid) : [];
+  if (!grup.length) { w.replaceChildren(); return; }
+  const n = grup.reduce((t, x) => t + x.length - 1, 0);
+  w.replaceChildren(el("div", { class: "peringatan" },
+    el("b", { text: `Ada ${n} data murid ganda ` }), "(nama dan kelas sama). ",
+    el("button", { class: "btn mini", type: "button", style: "margin-top:8px;display:block", text: "Periksa & gabungkan", onclick: bukaGanda })));
+}
+function bukaGanda() { bersihPesan("pesanGanda"); renderGanda(); $("dlgGanda").showModal(); }
+function renderGanda() {
+  const grup = cariGanda(semuaMurid);
+  $("btnGabungSemua").hidden = !grup.length;
+  $("daftarGanda").replaceChildren(...(grup.length ? grup.map((x) => el("div", { class: "panel" },
+    ...x.map((m, i) => el("div", { class: "kontak" },
+      el("div", {}, el("b", { text: m.nama }),
+        el("div", { class: "redup kecil", text: [m.kelas, nisDari(m) ? "NIS " + nisDari(m) : "tanpa NIS",
+          KOLOM_M.filter((k) => m[k]).length + " kolom terisi", "ditambahkan " + fmtWaktu(m.dibuat_pada)].join(" · ") })),
+      el("span", { class: "lencana " + (i ? "s-belum" : "s-selesai"), text: i ? "Digabung" : "Dipertahankan" }))),
+    el("button", { class: "btn lebar", style: "margin:10px 0 0", type: "button", text: "Gabungkan", onclick: (e) => gabungGrup([x], e.target) })))
+    : [kosong("Tidak ada lagi murid ganda.")]));
+}
+async function gabungGrup(grup, btn) {
+  if (btn) btn.disabled = true;
+  bersihPesan("pesanGanda");
+  let n = 0;
+  try {
+    for (const x of grup) for (const o of x.slice(1)) { await api("murid.gabung", { simpan: x[0].id, buang: o.id }); n++; }
+    toast(n + " duplikat digabungkan");
+  } catch (err) { galat("pesanGanda", err); }
+  muridAktif = [];
+  await muatMurid();
+  renderGanda();
+  if (!cariGanda(semuaMurid).length && !$("pesanGanda").textContent) $("dlgGanda").close();
+}
+$("btnGabungSemua").addEventListener("click", (e) => {
+  const grup = cariGanda(semuaMurid);
+  const n = grup.reduce((t, x) => t + x.length - 1, 0);
+  if (!confirm(`Gabungkan ${n} duplikat? Data lama dipertahankan dan dilengkapi, duplikatnya dihapus.`)) return;
+  gabungGrup(grup, e.target).finally(() => (e.target.disabled = false));
+});
+$("btnTutupGanda").addEventListener("click", () => $("dlgGanda").close());
 
 // ---------- mulai ----------
 (async () => {
